@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: food-supplier-web
+  labels:
+    app: foodsupplier
+spec:
+  selector:
+    matchLabels:
+      app: foodsupplier
+      tier: web
+  template:
+    metadata:
+      labels:
+        app: foodsupplier
+        tier: web
+    spec:
+      containers:
+      - name: foodsupplier-spring
+        image: gcr.io/lorax-oss-2020/foodsupplier-spring:v1
+        ports:
+        - containerPort: 8080
