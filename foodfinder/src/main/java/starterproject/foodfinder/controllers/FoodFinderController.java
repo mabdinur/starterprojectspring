@@ -2,6 +2,7 @@ package starterproject.foodfinder.controllers;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,4 +26,9 @@ public class FoodFinderController
 		return foodFinderService.getIngredient(ingredientName);
 	}
 	
+	@PutMapping
+	@RequestMapping(value = "/error")
+	private void error() throws Exception {
+		throw new Exception("Throw Test Exception. Test error request sent"); 
+	}
 }

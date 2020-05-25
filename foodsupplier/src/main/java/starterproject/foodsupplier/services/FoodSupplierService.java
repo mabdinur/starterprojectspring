@@ -30,7 +30,7 @@ public class FoodSupplierService implements FoodSupplier
     public List<Vendor> getVendorsByIngredient(String ingredientName)
     {
         List<Vendor> vendors = new ArrayList<Vendor>();
-
+        
         for (Iterator<String> iterator = vendorToItemsJson.keySet().iterator(); iterator.hasNext();) {
             String vendorName = iterator.next();
             

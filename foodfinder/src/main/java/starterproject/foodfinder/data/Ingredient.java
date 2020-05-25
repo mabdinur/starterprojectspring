@@ -25,4 +25,7 @@ public class Ingredient implements Serializable {
 		this.quantity = quantity; 
 		this.currency = currency;
     }
+	public Ingredient(String name) {
+		this.name = name;
+	}
 }

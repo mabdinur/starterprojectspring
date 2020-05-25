@@ -17,10 +17,11 @@ import starterproject.foodfinder.helpers.JSONReaderHelper;
 public class FoodService {
 
 	private static final String SERVICES_FILE = "remote_services.json";
+	private static final String SCHEME = "http";
 	
 	private static final String FOOD_SUPPLIER_IP = "foodsupplier_ip";
 	private static final String FOOD_SUPPLIER_PATH = "foodsupplier_path";
-	
+
 	private static final String FOOD_VENDOR_IP = "foodvendor_ip";
 	private static final String FOOD_VENDOR_PATH = "foodvendor_path";
 	
@@ -28,7 +29,7 @@ public class FoodService {
 	
     private final RestTemplate restTemplate;
     
-    private JSONObject serviceToIP;
+    private final JSONObject serviceToIP;
 
     public FoodService(RestTemplateBuilder restTemplateBuilder) {
         this.restTemplate = restTemplateBuilder.build();
@@ -60,7 +61,7 @@ public class FoodService {
     	String path = (String) serviceToIP.get(path_name);
     	
 		UriComponentsBuilder builder = UriComponentsBuilder.newInstance()
-			      .scheme("http").host(ipAddress).path(path)
+			      .scheme(SCHEME).host(ipAddress).path(path)
 			      .queryParam(INGREDIENT_NAME_PARAM, ingredientName);
     	
     	return builder.toUriString();

@@ -29,4 +29,9 @@ public class VendorInventory {
 	public void removeIngredient(Ingredient ingredient) {
 		this.ingredients.remove(ingredient);
 	}
+	
+	public Ingredient getIngredient(String name) {
+		return ingredients.stream().filter(ingredient -> 
+			ingredient.getName() == name).findFirst().get();
+	}
 }
