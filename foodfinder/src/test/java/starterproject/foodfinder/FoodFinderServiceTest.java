@@ -2,18 +2,12 @@ package starterproject.foodfinder;
 
 import static org.junit.Assert.assertEquals;
 
-import java.util.List;
-
-import org.assertj.core.util.Arrays;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import starterproject.foodfinder.data.Vendor;
@@ -36,19 +30,16 @@ public class FoodFinderServiceTest {
 	FoodFinderService foodFinderService;
 	
     @Test
-    public void testGetVendorsByIngredient()
+    public void testGetVendorsByIngredient() throws Exception
     {
         Vendor [] vendors = { new Vendor(VENDOR_NAME) };
-        ResponseEntity<Vendor[]> supplierResponse = new ResponseEntity<Vendor[]>(vendors, HttpStatus.OK);
-       		
-        Mockito.when(foodService.getVendorsByIngredient(INGREDIENT_NAME)).thenReturn(supplierResponse);
+        	
+        Mockito.when(foodService.getVendorsByIngredient(INGREDIENT_NAME)).thenReturn(vendors);
         
         Ingredient ingredient = new Ingredient(INGREDIENT_NAME);
 		VendorInventory[] inventories = {new VendorInventory(vendors[0], ingredient)};
-		ResponseEntity<VendorInventory[]> vendorResponse = new ResponseEntity<VendorInventory[]>(inventories, HttpStatus.OK);
-        
-		Mockito.when(foodService.getIngredientFromVendors(vendors, INGREDIENT_NAME)).thenReturn(vendorResponse);
-        
+		
+		Mockito.when(foodService.getIngredientFromVendors(vendors, INGREDIENT_NAME)).thenReturn(inventories);
         
 		VendorInventory[] testInventories = foodFinderService.getIngredient(INGREDIENT_NAME);
         

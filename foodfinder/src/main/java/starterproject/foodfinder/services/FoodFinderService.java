@@ -1,7 +1,6 @@
 package starterproject.foodfinder.services;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import starterproject.foodfinder.data.Vendor;
@@ -18,12 +17,11 @@ public class FoodFinderService implements FoodFinder
 	FoodService foodService;
 	
 	@Override
-    public VendorInventory[] getIngredient(String ingredientName)
+    public VendorInventory[] getIngredient(String ingredientName) throws Exception
     {
-		  ResponseEntity<Vendor[]> foodSupplierResponse = foodService.getVendorsByIngredient(ingredientName);
-		  Vendor[] vendors = foodSupplierResponse.getBody();
-		  ResponseEntity<VendorInventory[]> vendorInventories = foodService.getIngredientFromVendors(vendors, ingredientName);
+		Vendor[] vendors =  foodService.getVendorsByIngredient(ingredientName);
+		VendorInventory[] vendorInventories = foodService.getIngredientFromVendors(vendors, ingredientName);
         
-		  return vendorInventories.getBody();
+		return vendorInventories;
     }
 }

@@ -1,8 +1,5 @@
 package starterproject.foodfinder.services;
 
-import java.util.List;
-
-import starterproject.foodfinder.data.Vendor;
 import starterproject.foodfinder.data.VendorInventory;
 
 /**
@@ -10,5 +7,5 @@ import starterproject.foodfinder.data.VendorInventory;
  */
 public interface FoodFinder {
     
-    public VendorInventory[] getIngredient(String ingredient);
+    public VendorInventory[] getIngredient(String ingredient) throws Exception;
 }
