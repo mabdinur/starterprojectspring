@@ -44,23 +44,19 @@ public class HttpUtils {
 
 	public static String callEndpoint(String url, Serializable requestBody, HttpMethod method) throws Exception {
     	LOG.info(String.format("Calling endpoint: %s, method: %s", url, method));
-        
+    	
         Span span = tracer.getCurrentSpan();
-        span.addAnnotation("Request sent");
-
-        try (Scope s = tracer.withSpan(span)) {
-            HttpURLConnection conn = getConnectionWithSpanContext(url, method, span);
-            
-            if(requestBody != null)
-            	addBodyToRequest(conn, requestBody);
-            
-            String result = readResponse(conn);
-            LOG.info(String.format("Response: %s", result));
-            
-            return result;
-        } finally {
-        	span.end();
-        }
+        span.addAnnotation("Request sent to Microservice");
+ 
+        HttpURLConnection conn = getConnectionWithSpanContext(url, method, span);
+        
+        if(requestBody != null)
+        	addBodyToRequest(conn, requestBody);
+        
+        String result = readResponse(conn);
+        LOG.info(String.format("Response: %s", result));
+        
+        return result;
     }
 
 	@SuppressWarnings("unchecked")

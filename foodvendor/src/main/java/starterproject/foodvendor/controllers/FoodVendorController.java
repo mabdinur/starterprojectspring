@@ -38,17 +38,16 @@ public class FoodVendorController
 		span.addAnnotation("FoodVendorController getIngredientFromVendors");
 		LOG.info("FoodVendorController /foodvendor/vendors called span starts");
 		
-        try (Scope ws = tracer.withSpan(span)) {
-        	return foodVendorService.getIngredientFromVendors(vendors, ingredientName);
+		List<VendorInventory> vendorInventory = null;
+        try{
+        	vendorInventory = foodVendorService.getIngredientFromVendors(vendors, ingredientName);
         } catch (Exception e) {
         	span.setStatus(Status.ABORTED);
             span.addAnnotation("Error while calling service");
             LOG.severe(String.format("Error while calling service: %s", e.getMessage()));
 		}
-        finally {
-        	span.end();
-        }
-        return null;
+       
+        return vendorInventory;
 	}
 	
 }

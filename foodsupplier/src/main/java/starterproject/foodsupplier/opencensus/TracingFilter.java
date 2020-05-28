@@ -45,14 +45,14 @@ public class TracingFilter extends OncePerRequestFilter {
             spanBuilder = tracer.spanBuilder(spanName);
             logger.warning("Parent Span is not present");
         }
-
+        
         Span span = spanBuilder.setRecordEvents(true)
                 .setSampler(Samplers.alwaysSample()).startSpan();
-
-        try (Scope s = tracer.withSpan(span)) {
-            filterChain.doFilter(request, response);
-        }finally {
-        	span.end();
-        }
+        
+        try (Scope scope = tracer.withSpan(span)) {
+        	filterChain.doFilter(request, response);
+		}
+        
+	 	span.end();
     }
 }
