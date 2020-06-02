@@ -25,7 +25,7 @@ public class OtelConfig {
         final Tracer tracer = OpenTelemetry.getTracerFactory().get("com.forrest.levelone");
         SpanProcessor jaegerProcessor =
             SimpleSpansProcessor.newBuilder(JaegerGrpcSpanExporter.newBuilder()
-            .setServiceName("otel_foodfinder")
+            .setServiceName("otel_foodsupplier")
             .setChannel(ManagedChannelBuilder.forAddress(
                     "34.66.234.123", 14250).usePlaintext().build())
             .build()).build();

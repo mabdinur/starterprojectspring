@@ -22,7 +22,7 @@ public class OtelConfig {
 
     @Bean
     public Tracer otelTracer() throws Exception{
-        final Tracer tracer = OpenTelemetry.getTracerFactory().get("com.forrest.levelone");
+        final Tracer tracer = OpenTelemetry.getTracerFactory().get("otel-example");
         SpanProcessor jaegerProcessor =
             SimpleSpansProcessor.newBuilder(JaegerGrpcSpanExporter.newBuilder()
             .setServiceName("otel_foodfinder")
