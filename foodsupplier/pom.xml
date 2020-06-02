@@ -15,36 +15,42 @@
 	<description>Gets a list of a vendors with an ingredient</description>
 
 	<properties>
-		<java.version>1.8</java.version>
+		<java.version>11</java.version>
 	</properties>
 
 	<dependencies>
 		<dependency>
-		  <groupId>io.opencensus</groupId>
-		  <artifactId>opencensus-api</artifactId>
-		  <version>0.26.0</version>
-		</dependency>
-		<!-- <dependency>
-		    <groupId>io.opencensus</groupId>
-		    <artifactId>opencensus-exporter-trace-jaeger</artifactId>
-		    <version>0.14.0</version>
-		  </dependency> -->
-		 <dependency>
-		  <groupId>io.opencensus</groupId>
-		  <artifactId>opencensus-exporter-trace-stackdriver</artifactId>
-		  <version>0.26.0</version>
-		</dependency> 
-		<dependency> 
-		  <groupId>io.opencensus</groupId>
-		  <artifactId>opencensus-impl</artifactId>
-		  <version>0.26.0</version>
-		  <scope>runtime</scope>
+      		<groupId>io.opentelemetry</groupId>
+     		<artifactId>opentelemetry-api</artifactId>
+      		<version>0.2.0</version>
+        </dependency>
+		<dependency>
+      		<groupId>io.opentelemetry</groupId>
+     		<artifactId>opentelemetry-sdk</artifactId>
+      		<version>0.2.0</version>
+        </dependency>
+		<dependency>
+			<groupId>io.opentelemetry</groupId>
+			<artifactId>opentelemetry-exporters-logging</artifactId>
+			<version>0.2.0</version>
 		</dependency>
 		<dependency>
-		   <groupId>joda-time</groupId>
-		   <artifactId>joda-time</artifactId>
-		   <version>2.10.6</version>
+			<groupId>io.opentelemetry</groupId>
+			<artifactId>opentelemetry-exporters-jaeger</artifactId>
+			<version>0.2.0</version>
 		</dependency>
+		
+		<dependency>
+			<groupId>io.grpc</groupId>
+			<artifactId>grpc-protobuf</artifactId>
+			<version>1.27.2</version>
+		</dependency>
+		<dependency>
+			<groupId>io.grpc</groupId>
+			<artifactId>grpc-netty</artifactId>
+			<version>1.27.2</version>
+		</dependency> 
+		
 		<dependency>
 	   		<groupId>com.googlecode.json-simple</groupId>
 	   		<artifactId>json-simple</artifactId>

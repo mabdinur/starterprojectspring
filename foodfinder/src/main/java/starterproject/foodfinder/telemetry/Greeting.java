@@ -1,4 +1,4 @@
-package starterproject.foodfinder.opentelemetry;
+package starterproject.foodfinder.telemetry;
 
 public class Greeting {
 

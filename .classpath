@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="src" path="foodfinder/.mvn/wrapper"/>
+	<classpathentry excluding="starterproject/foodfinder/opentelemetry/" kind="src" path="foodfinder/src/main/java"/>
+	<classpathentry kind="src" path="foodfinder/src/main/java/starterproject/foodfinder/opentelemetry"/>
+	<classpathentry kind="src" path="foodfinder/src/test/java"/>
+	<classpathentry kind="src" path="foodsupplier/.mvn/wrapper"/>
+	<classpathentry kind="src" path="foodsupplier/src/main/java"/>
+	<classpathentry kind="src" path="foodsupplier/src/test/java"/>
+	<classpathentry kind="src" path="foodvendor/.mvn/wrapper"/>
+	<classpathentry kind="src" path="foodvendor/src/main/java"/>
+	<classpathentry kind="src" path="foodvendor/src/test/java"/>
+	<classpathentry kind="lib" path="foodfinder/target/foodfinder-0.0.1-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="foodsupplier/bin/maven-wrapper.jar"/>
+	<classpathentry kind="lib" path="foodsupplier/target/foodsupplier-0.0.1-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="foodvendor/bin/maven-wrapper.jar"/>
+	<classpathentry kind="lib" path="foodvendor/target/foodvendor-0.0.1-SNAPSHOT.jar"/>
+	<classpathentry kind="output" path="foodfinder/bin"/>
+</classpath>

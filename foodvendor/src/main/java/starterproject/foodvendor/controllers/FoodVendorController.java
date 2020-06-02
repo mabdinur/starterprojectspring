@@ -10,11 +10,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import io.opencensus.common.Scope;
-import io.opencensus.trace.Span;
-import io.opencensus.trace.Status;
-import io.opencensus.trace.Tracer;
-import io.opencensus.trace.Tracing;
+import io.opentelemetry.trace.Span;
+import io.opentelemetry.trace.Status;
+import io.opentelemetry.trace.Tracer;
 import starterproject.foodvendor.data.Vendor;
 import starterproject.foodvendor.data.VendorInventory;
 import starterproject.foodvendor.services.FoodVendorService;
@@ -26,16 +24,18 @@ import starterproject.foodvendor.services.FoodVendorService;
 @RequestMapping(value = "/foodvendor/vendors")
 public class FoodVendorController
 {
-	private static final Tracer tracer = Tracing.getTracer();
 	private static final Logger LOG = Logger.getLogger(FoodVendorController.class.getName());
+	
 	@Autowired
 	private FoodVendorService foodVendorService;
+	@Autowired
+    Tracer tracer;
 	
 	@PostMapping
 	public List<VendorInventory> getIngredientFromVendors(@RequestBody List<Vendor> vendors, @RequestParam String ingredientName)
 	{
 		Span span = tracer.getCurrentSpan();
-		span.addAnnotation("FoodVendorController getIngredientFromVendors");
+		span.addEvent("FoodVendorController getIngredientFromVendors");
 		LOG.info("FoodVendorController /foodvendor/vendors called span starts");
 		
 		List<VendorInventory> vendorInventory = null;
@@ -43,7 +43,7 @@ public class FoodVendorController
         	vendorInventory = foodVendorService.getIngredientFromVendors(vendors, ingredientName);
         } catch (Exception e) {
         	span.setStatus(Status.ABORTED);
-            span.addAnnotation("Error while calling service");
+            span.addEvent("Error while calling service");
             LOG.severe(String.format("Error while calling service: %s", e.getMessage()));
 		}
        
