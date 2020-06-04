@@ -27,7 +27,7 @@ public class OtelConfig {
             SimpleSpansProcessor.newBuilder(JaegerGrpcSpanExporter.newBuilder()
             .setServiceName("otel_foodsupplier")
             .setChannel(ManagedChannelBuilder.forAddress(
-                    "34.66.234.123", 14250).usePlaintext().build())
+                    "localhost", 14250).usePlaintext().build())
             .build()).build();
 
         SpanProcessor logProcessor = SimpleSpansProcessor.newBuilder(new LoggingExporter()).build();

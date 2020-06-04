@@ -83,13 +83,13 @@ SpanProcessor jaegerProcessor =
         SimpleSpansProcessor.newBuilder(JaegerGrpcSpanExporter.newBuilder()
             .setServiceName("otel_foodservices") 
             .setChannel(ManagedChannelBuilder.forAddress(
-                    "34.66.234.123", 14250).usePlaintext().build())
+                    "localhost", 14250).usePlaintext().build())
             .build()).build();
 
 OpenTelemetrySdk.getTracerFactory().addSpanProcessor(jaegerProcessor);
 ```
 
-Use the command `docker run -d -p 6831:6831/udp -p 16686:16686 -p 14250:14250 jaegertracing/all-in-one:latest` to run the Jaeger Exporter. After creating and running the FoodFinder and FoodVendor services you can view your traces at localhost:6831 using Jaeger's UI.
+Use the command `docker run --rm -it --network=host jaegertracing/all-in-one` to run the Jaeger Exporter on localhost. After creating and running the FoodFinder and FoodVendor services you can view your traces at localhost:16686 using Jaeger's UI.
 
      
 ### Add Rest Controllers to Spring Applications
