@@ -134,7 +134,7 @@ public class FoodFinderController
 	@Autowired
 	HttpUtils httpUtils;
 	
-    private static String FS_URL = "localhost:8081/ingredient/milk";
+    	private static String FS_URL = "localhost:8081/ingredient/milk";
 		
 	@GetMapping
 	public String getMilk()
@@ -154,7 +154,6 @@ public class FoodFinderController
        finally{
            span.end();
        }
-	}
 }
 ```
 
@@ -184,19 +183,19 @@ public class HttpUtils {
         
         restTemplate  = new RestTemplate();
     }
-    
-	public String callEndpoint(String url) throws Exception {
-		HttpHeaders headers = new HttpHeaders();
+   
+    public String callEndpoint(String url) throws Exception {
+	HttpHeaders headers = new HttpHeaders();
         
-		Span currentSpan = tracer.getCurrentSpan();
+	Span currentSpan = tracer.getCurrentSpan();
         textFormat.inject(currentSpan.getContext(), headers, setter);
         
         HttpEntity<String> entity = new HttpEntity<String>(headers);
 		
-		ResponseEntity<String> response = restTemplate.
+	ResponseEntity<String> response = restTemplate.
        		 exchange(url, HttpMethod.GET, entity, String.class);
 
-		return response.getBody(); 
+	return response.getBody(); 
     }
 }
 ```
@@ -228,13 +227,13 @@ public class FoodSupplierApplication {
 @RequestMapping(value = "/ingredient/milk")
 public class FoodSupplierController
 {
-	@Autowired
+    @Autowired
     private Tracer tracer;
 		
-	@GetMapping
-	public String getMilkVendors()
-	{
-		Span span = tracer.spanBuilder("ingredient").startSpan();
+    @GetMapping
+    public String getMilkVendors()
+    {
+       Span span = tracer.spanBuilder("ingredient").startSpan();
        span.addEvent("FoodSupplierController Entered");
        span.setAttribute("vendor.ingredient", "milk");
 
@@ -244,7 +243,7 @@ public class FoodSupplierController
        finally{
            span.end();
        }
-	}
+    }
 }
 ```
 
