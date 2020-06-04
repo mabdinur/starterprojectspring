@@ -1,21 +1,16 @@
 package starterproject.foodfinder.services;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.web.client.RestTemplateBuilder;
-import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-//import com.fasterxml.jackson.databind.ObjectMapper;
-
 import starterproject.foodfinder.data.Vendor;
 import starterproject.foodfinder.data.VendorInventory;
-import starterproject.foodfinder.telemetry.HttpUtils;
 
 /**
  * Sends requests to foodsupplier and foodvendor microservices
@@ -34,29 +29,30 @@ public class FoodService {
 	private static final String FOOD_VENDOR_PATH = "foodvendor.path";
 	
 	private static final String INGREDIENT_NAME_PARAM = "ingredientName";
-	
-	@Autowired
-	private HttpUtils httpUtils;
-   
+
 	@Autowired
     private Environment env;
+	@Autowired
+	private RestTemplate restTemplate;
     
     public Vendor[] getVendorsByIngredient(String ingredientName) throws Exception {
     	 String url = getUrl(FOOD_SUPPLIER_ADDRESS, FOOD_SUPPLIER_PORT, FOOD_SUPPLIER_PATH, ingredientName);
         
-    	 String responseJson = httpUtils.callEndpoint(url, null, HttpMethod.GET);
-    	 Vendor[] vendors = new ObjectMapper().readValue(responseJson, Vendor[].class);
-    	 
-    	 return vendors; 
+    	 ResponseEntity<Vendor[]> response = restTemplate.
+        		 exchange(url, HttpMethod.GET, null, Vendor[].class);
+
+    	 return response.getBody(); 
     }
     
     public VendorInventory[] getIngredientFromVendors(Vendor[] vendors, String ingredientName) throws Exception {
         String url = getUrl(FOOD_VENDOR_ADDRESS, FOOD_VENDOR_PORT, FOOD_VENDOR_PATH, ingredientName);
         
-        String responseJson = httpUtils.callEndpoint(url, vendors, HttpMethod.POST);
-        VendorInventory[] vendorInventory = new ObjectMapper().readValue(responseJson, VendorInventory[].class);
-        
-        return vendorInventory;
+        HttpEntity<Vendor[]> request = new HttpEntity<>(vendors);
+
+        ResponseEntity<VendorInventory[]> response = restTemplate.
+        		exchange(url, HttpMethod.POST, request, VendorInventory[].class);
+
+        return response.getBody();
     }
     
     private String getUrl(String service_type, String port_name, String path_name, String ingredientName) {

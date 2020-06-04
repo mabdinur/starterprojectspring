@@ -439,7 +439,8 @@ public class HttpUtils {
 
 Open Tracing has contributions for injecting and extracting the span context in to a payload as can be seen in these contributions:
 
-https://github.com/opentracing-contrib/java-web-servlet-filter  (inject)
+(ava-web-servlet-filter)[https://github.com/opentracing-contrib/java-web-servlet-filter]  (inject)
+
 java-okhttp: https://github.com/opentracing-contrib/java-okhttp (extract)
 java-apache-httpclient: https://github.com/opentracing-contrib/java-apache-httpclient (extract)
 java-asynchttpclient: https://github.com/opentracing-contrib/java-asynchttpclient (extract)
