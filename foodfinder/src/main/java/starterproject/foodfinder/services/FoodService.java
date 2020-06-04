@@ -35,8 +35,6 @@ public class FoodService {
 	
 	private static final String INGREDIENT_NAME_PARAM = "ingredientName";
     
-	@Autowired
-	private RestTemplate restTemplate;
 	
 	@Autowired
     private Environment env;
@@ -55,13 +53,8 @@ public class FoodService {
         
         String responseJson = HttpUtils.callEndpoint(url, vendors, HttpMethod.POST);
         VendorInventory[] vendorInventory = new ObjectMapper().readValue(responseJson, VendorInventory[].class);
- 
+        
         return vendorInventory;
-    }
-    
-    @Bean
-    public RestTemplate restTemplate(RestTemplateBuilder builder) {
-       return builder.build();
     }
     
     private String getUrl(String service_type, String port_name, String path_name, String ingredientName) {

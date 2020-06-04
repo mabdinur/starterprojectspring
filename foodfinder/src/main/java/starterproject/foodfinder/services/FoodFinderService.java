@@ -21,7 +21,7 @@ public class FoodFinderService implements FoodFinder
     {
 		Vendor[] vendors =  foodService.getVendorsByIngredient(ingredientName);
 		VendorInventory[] vendorInventories = foodService.getIngredientFromVendors(vendors, ingredientName);
-        
+  
 		return vendorInventories;
     }
 }

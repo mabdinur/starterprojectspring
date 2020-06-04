@@ -2,8 +2,8 @@ package starterproject.foodfinder.telemetry;
 
 import java.util.logging.Logger;
 
-import org.springframework.http.HttpHeaders;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.oxm.xstream.XStreamMarshaller;
@@ -11,7 +11,6 @@ import org.springframework.oxm.xstream.XStreamMarshaller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import io.opentelemetry.OpenTelemetry;
 import io.opentelemetry.context.propagation.HttpTextFormat;
 import io.opentelemetry.trace.Span;
 import io.opentelemetry.trace.SpanContext;
@@ -36,7 +35,8 @@ import java.net.URLConnection;
 public class HttpUtils {
     private static final Logger LOG = Logger.getLogger(HttpUtils.class.getName());
     
-    private static final Tracer tracer = OpenTelemetry.getTracerFactory().get("otel-example");
+    @Autowired
+    private static Tracer tracer;
     
     private static final HttpTextFormat<SpanContext> textFormat = tracer.getHttpTextFormat();
     private static final HttpTextFormat.Setter<HttpURLConnection> setter =
@@ -87,8 +87,7 @@ public class HttpUtils {
     }
     
     private static String objectToJSON(Serializable obj) throws JsonProcessingException {
-    	ObjectMapper objectMapper = new ObjectMapper();
-		return objectMapper.writeValueAsString(obj);
+		return new ObjectMapper().writeValueAsString(obj);
     }
     
     private static String readResponse(HttpURLConnection conn) throws IOException {

@@ -1,350 +1,470 @@
-# OpenTelemetry Workshop
+# OpenTelemetry Manual Instrumentation: Spring and SpringBoot
 
-## Introduction
+The goal of this project is to streamline the manual instrumentation process for Spring and Springboot to make it possible for users to enable tracing for requests, and database calls with a few edits to user code. The scope of this project is not fully automated instrumentation, it is providing users with better tools to instrument their own code. 
 
-This code lab demonstrates the
-[OpenTelemetry collector](https://github.com/open-telemetry/opentelemetry-collector)
-and agent. It includes a test application which sends metrics and trace data to
-Prometheus and Zipkin backends via the OpenTelemetry agent and collector. All
-software is deployed to the same cluster on Google Kubernetes Engine. The
-codelab will step through the deployment, explaining configuration, and viewing
-of data.
+This integration for OpenTelemetry will follow in the footsteps of the existing Spring integration in Open Census with upgrades to the functionality and improved user experience. This project will specifically address tracing with the stretch goal of supporting metrics. 
 
-The advantage of using the OpenTelemetry agent rather than sending trace and
-metrics direct to Prometheus, Zipkin, or other backend is that you can change
-trace and metrics configuration without changing or redeploying your app.
-The advantage of using the OpenTelemetry collector is that it prodives
-additional flexibility in configuration options and can scale out to support a
-large processing pipeline. A schematic diagram is shown
-[here](screenshots/schematic.png).
+## Current Manual Instrumentation Process
 
-The code lab is an adaptation of the
-[opentelemetry-collector](https://github.com/open-telemetry/opentelemetry-collector/tree/master/examples/demo)
-demo.
+A sample user journey for manual instrumentation can be found on [lightstep](https://docs.lightstep.com/otel/getting-started-java-springboot). In this example we will create two spring web services using SpringBoot and trace the requests between these services using OpenTelemetry. As you can see from the example below, this process involves adding tracers into the application code and making  
 
-## Test App
-The 
-[test app](https://github.com/open-telemetry/opentelemetry-collector/blob/master/examples/main.go)
-generates metrics and trace data, which it sends to the
-OpenTelemtry agent. The agent then forwards the data to the OpenCensus
-collector.
 
-The test application first creates and register metrics and trace exports to the
-agent with the code:
+### Create two Spring Projects
 
-```go
-	ocAgentAddr, ok := os.LookupEnv("OTEL_AGENT_ENDPOINT")
-	if !ok {
-		ocAgentAddr = ocagent.DefaultAgentHost + ":" + string(ocagent.DefaultAgentPort)
-	}
-	oce, err := ocagent.NewExporter(
-		ocagent.WithAddress(ocAgentAddr),
-		ocagent.WithInsecure(),
-		ocagent.WithServiceName(fmt.Sprintf("example-go-%d", os.Getpid())))
-	if err != nil {
-		log.Fatalf("Failed to create ocagent-exporter: %v", err)
-	}
-	trace.RegisterExporter(oce)
-	view.RegisterExporter(oce)
+Using https://start.spring.io/ create two spring projects, one named FoodFinder and the other named FoodSupplier. Before downloading the project make sure to add spring-web as a dependency. 
+
+
+### Include Dependencies
+```xml
+
+<dependency>
+	<groupId>io.opentelemetry</groupId>
+	<artifactId>opentelemetry-api</artifactId>
+	<version>0.2.0</version>
+</dependency>
+<dependency>
+	<groupId>io.opentelemetry</groupId>
+	<artifactId>opentelemetry-sdk</artifactId>
+	<version>0.2.0</version>
+</dependency>
+<dependency>
+	<groupId>io.opentelemetry</groupId>
+	<artifactId>opentelemetry-exporters-logging</artifactId>
+	<version>0.2.0</version>
+</dependency>
+<dependency>
+	<groupId>io.opentelemetry</groupId>
+	<artifactId>opentelemetry-exporters-jaeger</artifactId>
+	<version>0.2.0</version>
+</dependency>
+<dependency>
+	<groupId>io.grpc</groupId>
+	<artifactId>grpc-protobuf</artifactId>
+	<version>1.27.2</version>
+</dependency>
+<dependency>
+	<groupId>io.grpc</groupId>
+	<artifactId>grpc-netty</artifactId>
+	<version>1.27.2</version>
+</dependency>
+	
 ```
 
-Views for the metrics are defined with the code
+The dependencies listed above need to be added to the pom.xml file to enable OpenTelemtry tracing and metrics in your application   
 
-```go
-	views := []*view.View{
-		{
-			Name:        "opdemo/latency",
-			Description: "The various latencies of the methods",
-			Measure:     mLatencyMs,
-			Aggregation: view.Distribution(0, 10, 50, 100, 200, 400, 800, 1000, 1400, 2000, 5000, 10000, 15000),
-			TagKeys:     []tag.Key{keyClient, keyMethod},
+### Add OpenTelemetry Tracer to Configuration to Spring Project
+
+```java
+package com.package.name;
+
+@Configuration
+@EnableAutoConfiguration (exclude={DataSourceAutoConfiguration.class, HibernateJpaAutoConfiguration.class})
+public class OtelConfig {
+
+    @Bean
+    public Tracer otelTracer() throws Exception{
+        final Tracer tracer = OpenTelemetry.getTracerFactory().get("project.name");
+
+        SpanProcessor logProcessor = SimpleSpansProcessor.newBuilder(new LoggingExporter()).build();
+
+        OpenTelemetrySdk.getTracerFactory().addSpanProcessor(logProcessor);
+
+        return tracer;
+    }
+}
+```
+
+The file above contains configures an OpenTelemetry tracer which can be AutoWired to components in a spring project. It also adds a span processor to export logs to the console. The LoggingExporter will print spans to console, giving more visibility to the creation of a spans. In a similar fashion, one could add other exporters such as a JaegarExporter to visualize traces on different backends. 
+
+Sample configuration for a JaegerExporter:
+
+```
+SpanProcessor jaegerProcessor =
+        SimpleSpansProcessor.newBuilder(JaegerGrpcSpanExporter.newBuilder()
+            .setServiceName("otel_foodservices") 
+            .setChannel(ManagedChannelBuilder.forAddress(
+                    "34.66.234.123", 14250).usePlaintext().build())
+            .build()).build();
+
+OpenTelemetrySdk.getTracerFactory().addSpanProcessor(jaegerProcessor);
+```
+
+Use the command `docker run -d -p 6831:6831/udp -p 16686:16686 -p 14250:14250 jaegertracing/all-in-one:latest` to run the Jaeger Exporter. After creating and running the FoodFinder and FoodVendor services you can view your traces at localhost:6831 using Jaeger's UI.
+
+     
+### Add Rest Controllers to Spring Applications
+
+Here I will add a Rest Controller called FoodFinder. This controller receives a request containing an ingredient name then send another http request to an external service. We will call this second service FoodSupplier. 
+
+FoodSupplier contains a list of a ingredients and maps it to different vendors. In this example FoodFinder will query FoodSupplier for the ingredient "milk" and FoodSupplier will return a list of suppliers who have this item. In this case "FooShop" and "BarShop" contain this item.  FoodSupplier will then returns a list containing the names "FooShop" and "BarShop". 
+
+#### Setup FoodFinder spring project:
+
+Step 1: Add OpenTelemetry Dependencies
+Step 2: Add OpenTelemetry Configuration
+Step 3: Add SpringBoot main class 
+Step 4: Create a RestController for FoodFinder
+Step 5: Start a span to wrap the FoodFinderController
+Step 6: Configure HttpUtils.callEndpoint to inject span context into request header. This is key to propagate the trace to the FoodSupplier
+
+
+```java
+@SpringBootApplication
+public class FoodFinderApplication {
+
+	public static void main(String[] args) throws IOException {
+		SpringApplication.run(FoodFinderApplication.class, args);
+	}
+}
+```
+
+
+```java
+@RestController
+@RequestMapping(value = "/ingredient")
+public class FoodFinderController
+{
+	@Autowired
+    private static Tracer tracer;
+    private static String FS_URL = "localhost:8081/ingredient/milk";
+		
+	@GetMapping
+	public String getMilk()
+	{
+		Span span = tracer.spanBuilder("ingredient").startSpan();
+       span.addEvent("Controller Entered");
+       span.setAttribute("ingredient.name", "milk");
+
+       try(Scope scope = tracer.withSpan(span)){
+           return HttpUtils.callEndpoint(FS_URL, HttpMethod.GET);
+       }
+       catch(Exception e){
+           span.addEvent("error");
+           span.setAttribute("error", true);
+           return "MILK VENDORS CAN'T BE FOUND";
+       }
+       finally{
+           span.end();
+       }
+	}
+}
+```
+
+```
+public class HttpUtils {
+    
+    @Autowired
+    private static Tracer tracer;
+    
+    private static final HttpTextFormat<SpanContext> textFormat = tracer.getHttpTextFormat();
+    private static final HttpTextFormat.Setter<HttpURLConnection> setter =
+            new HttpTextFormat.Setter<HttpURLConnection>() {
+      public void put(HttpURLConnection carrier, String key, String value) {
+        carrier.setRequestProperty(key, value);
+      }
+    };
+
+	public static String callEndpoint(String url, Serializable requestBody, HttpMethod method) throws Exception {
+ 
+        Span span = tracer.getCurrentSpan();
+        span.addEvent("Request sent to Microservice");
+ 
+        HttpURLConnection conn = getConnectionWithSpanContext(url, method, span);
+        return readResponse(conn);
+    }
+
+	private static HttpURLConnection getConnectionWithSpanContext(String url, HttpMethod method, Span span)
+			throws IOException, MalformedURLException, ProtocolException {
+		HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+		textFormat.inject(span.getContext(), conn, setter);
+		conn.setRequestMethod(method.name());
+		return conn;
+	}
+    
+    private static String readResponse(HttpURLConnection conn) throws IOException {
+		StringBuilder result = new StringBuilder();
+		
+		BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+		String line;
+		while ((line = rd.readLine()) != null) {
+		    result.append(line);
 		}
+		rd.close();
+		
+		return result.toString();
 	}
+}
 ```
 
-Latency and other metrics data is recorded with the code
+#### Setup FoodSupplier spring project:
 
-```go
-stats.Record(ctx, mLatencyMs.M(latencyMs))
+Step 1: Add OpenTelemetry Dependencies
+Step 2: Add OpenTelemetry Configuration
+Step 3: Add SpringBoot main class 
+Step 4: Create a RestController for FoodSupplier
+Step 5: Start a span to wrap the FoodSupplierController
+
+**Note: The default port for the Apache Tomcat is 8080. On localhost both FoodFinder and FoodSupplier services will attempt to run on this port raising an error. To avoid this add `server.port=8081` to the application.properties in the Springboot resource directory. Ensure the port used corresponds to port referenced by FoodFinderController.FS_URL. **
+  
+
+```java
+@SpringBootApplication
+public class FoodSupplierApplication {
+
+	public static void main(String[] args) throws IOException {
+		SpringApplication.run(FoodSupplierApplication.class, args);
+	}
+}
 ```
 
-Spans are created for each iteration with the code:
 
-```go
-_, span := trace.StartSpan(context.Background(), "Foo")
+```java
+@RestController
+@RequestMapping(value = "/ingredient/milk")
+public class FoodSupplierController
+{
+	@Autowired
+    private static Tracer tracer;
+		
+	@GetMapping
+	public String getMilkVendors()
+	{
+		Span span = tracer.spanBuilder("ingredient").startSpan();
+       span.addEvent("FoodSupplierController Entered");
+       span.setAttribute("vendor.ingredient", "milk");
+
+       try(Scope scope = tracer.withSpan(span)){
+           return new String [] {"FooShop", "BarShop"}
+       }
+       finally{
+           span.end();
+       }
+	}
+}
 ```
 
-## Project Setup
+#### Run FoodFinder and FoodSupplier:
 
-Enable the following APIs
-```shell
-gcloud services enable stackdriver.googleapis.com \
- cloudtrace.googleapis.com \
- logging.googleapis.com \
- container.googleapis.com
- ```
+***Ensure either LogExporter or Jaeger is configured in the OtelConfig.java file and is running*** 
+ 
+Run FoodFinder and FoodSupplier from command line or using an IDE (ex. Eclipse). The end point for FoodFinder is localhost:8080/ingredient and for FoodSupplier, localhost:8081/ingredient/milk. Entering localhost:8080/ingredient should call FoodFinder and then FoodVendor, creating a trace.
 
-## Create a cluser
+After running jaeger locally, refresh the UI and view the exported traces from the two web services. Congrats, you created a distributed service with OpenTelemetry!
 
-Create a cluster with the command:
 
-```shell
-ZONE=us-central1-c
-gcloud container clusters create ot-demo-cluster \
-   --num-nodes 2 \
-   --machine-type=n1-standard-2 \
-   --enable-basic-auth \
-   --issue-client-certificate \
-   --zone $ZONE
-```
+### otel-example 
 
-See 
-[Quickstart: Deploying a language-specific app](https://cloud.google.com/kubernetes-engine/docs/quickstarts/deploying-a-language-specific-app)
-for more details on creating clusters.
+In the otel-example/ directory you can find 3 food services (FoodFinder, FoodSupplier, and FoodVendor). This example is an extension of the example presented above. FoodFinder queries FoodSupplier and then FoodVendor to retrieve ingredient quantity, price and the vendor that carries the item. FoodSupplier retrieves the names of vendors with a specific ingredient return a list of Vendor names. FoodVendor then takes that list of vendors and the desired ingredient and then returns the corresponding inventory from available vendors. The list of vendor inventories is then returned by FoodFinder. 
 
-## Prometheus
+Unlike in the simplified example above, these services do not create spans in an individual controller instead a HandlerInterceptor is initialized which wraps all controllers in a span. To propagate the span context in a request HttpUtils is still used, however, the functionality was expanded to support PUT requests (adding a body to a request).  
 
-Create a ConfigMap volume for the Prometheus configuration file:
+FoodFinder is configured to run on port 8080, FoodSupplier on 8081, and FoodVendor on 8082. Download and run the three services from the SpringApplication main class. 
 
-```shell
-kubectl create configmap prometheus-config-volume --from-file=prometheus.yaml
-```
+Sample request: localhost:8080/foodfinder/ingredient?ingredientName=item3
 
-Add the Prometheus workload to the cluster
-
-```shell
-kubectl apply -f promdeployment.yaml
-```
-
-Check the status
-
-```shell
-kubectl get deployments
-```
-
-Expose prometheus as a service
-
-```shell
-kubectl apply -f promservice.yaml
-```
-
-Check the services are running ok
-
-```shell
-kubectl get services
-NAME         TYPE           CLUSTER-IP     EXTERNAL-IP      PORT(S)          AGE
-kubernetes   ClusterIP      10.19.240.1    <none>           443/TCP          91m
-prometheus   LoadBalancer   10.19.249.82   35.222.254.152   9090:31355/TCP   57s
-```
-Note the IP of the LB for Prometheus. It might take a few minutes to create.
-Go to http://35.222.254.152:9090 to see the Prometheus console.
-
-## Zipkin
-
-Add the all-in-one Zipkin workload to the cluster
-
-```shell
-kubectl apply -f zipkindeployment.yaml
-```
-
-Expose Zipkin as a service
-
-```shell
-kubectl apply -f zipkinservice.yaml
-```
-
-Check the status
-
-```shell
-kubectl get svc
-NAME         TYPE           CLUSTER-IP      EXTERNAL-IP      PORT(S)          AGE
-kubernetes   ClusterIP      10.19.240.1     <none>           443/TCP          141m
-kzipkin      LoadBalancer   10.19.243.199   35.238.211.233   9411:31685/TCP   108s
-prometheus   LoadBalancer   10.19.249.82    35.222.254.152   9090:31355/TCP   51m
-```
-
-Go to the Zipkin console at http://35.238.211.233:9411
-
-## Deploy the OT collector
-
-Create a ConfigMap volume for the OT collector with a configuration file:
-
-```shell
-kubectl create configmap otel-collector-config-vol \
-  --from-file=otel-collector-config.yaml
-```
-
-Deploy the OT collector and a K8s service for it
-
-```shell
-kubectl apply -f otel-collector-k8s.yaml
-```
-
-## Deploy the OT agent
-
-Create a ConfigMap volume for the OT agent with a configuration file:
-
-```shell
-kubectl create configmap otel-agent-config-vol \
-  --from-file=otel-agent-config.yaml
-```
-
-Deploy the agent as a daemon set:
-
-```shell
-kubectl apply -f otel-agent-k8s.yaml
-```
-
-## Build and deploy the test app
-
-The example file in the
-[opentelemetry-collector/examples/main.go](https://github.com/open-telemetry/opentelemetry-collector/blob/master/examples/main.go)
-generates trace and metrics data.
-
-A Docker image needs to be built and pushed to Google Container Registry:
-
-```shell
-cd metrics-load-generator
-docker build -t metrics-load-generator . 
-docker tag metrics-load-generator gcr.io/$PROJECT_ID/metrics-load-generator:v0.0.2
-docker push gcr.io/$PROJECT_ID/metrics-load-generator:v0.0.2
-```
-
-Edit the file deployment-k8s.yaml, replacing PROJECT_ID with your own
-project id. Deploy the metrics generator:
-
-```shell
-kubectl apply -f deployment-k8s.yaml
-```
-
-## Viewing the data
-
-Find the external IPs of Prometheus and Zipkin from the command
-
-```shell
-kubectl get svc
-```
-
-Navigate to the Prometheus user interface at http://external_ip:9090 
-Click on the metrics dropdown and select a metric in the promexample namespace,
-such as promexample_opdemo_latency_count. Enter a
-[Prometheus query](https://prometheus.io/docs/prometheus/latest/querying/basics/)
-for the timeseries in the textfield. For example,
+Expect response: 
 
 ```
-rate(promexample_opdemo_latency_count[1m])
+[
+    {
+        "vendor": {
+            "name": "shop2"
+        },
+        "ingredients": [
+            {
+                "name": "item3",
+                "price": 1.0,
+                "quantity": 10.0,
+                "currency": "CAD"
+            }
+        ]
+    },
+    {
+        "vendor": {
+            "name": "shop1"
+        },
+        "ingredients": [
+            {
+                "name": "item3",
+                "price": 30.0,
+                "quantity": 3.0,
+                "currency": "CAD"
+            }
+        ]
+    }
+]
 ```
 
-You should see a chart similar to [this screenshot](screenshots/prometheus.png).
+Ingredient data is stored in foodvendor/src/main/resources/vendors.json and vendors data is stored in foodsupplier/src/main/resources/suppliers.json.
 
-You can also view percentile values for latency using Prometheus 
-[histogram functions](https://prometheus.io/docs/practices/histograms/).
-To try this enter the query
+
+## Proposed Improvements
+
+### Create new spring contrib package for Open Telemetry  
 
 ```
-histogram_quantile(0.9, sum(rate(promexample_opdemo_latency_bucket[2m])) by (le))
+ <dependency>
+    <groupId>io.opentelemetry</groupId>
+    <artifactId>opentelemetry-contrib-spring</artifactId>
+    <version>VERSION</version>
+ </dependency>
+```
+ 
+This new dependency can be added to string applications adopting opentelemetry to leverage the newly proposed manual instrumentation tools.
+ 
+### Add @ConfigTracer
+
+To use the annotations below you must place this annotation on the the main class of the project. This will create an OpenTelemetry tracer bean which can be autowired and injected as a dependency.  
+
+@ConfigTracer Fields:
+- String: tracerName
+
+Example Usage:
+
+```
+@ConfigTracer 
+@SpringBootApplication
+public class FoodSupplierApplication {
+
+	public static void main(String[] args) throws IOException {
+		SpringApplication.run(FoodSupplierApplication.class, args);
+	}
+}
 ```
 
-You should see something like
-[this screenshot](screenshots/prometheus_percentile.png).
+This annotation will use this method:
+`OpenTelemetry.getTracerFactory().get("tracerName")`
+ 
+### Create @TraceMethod and @TraceClass annotations 
 
-Explore the other metrics in the Prometheus metric dropdown.
+These new annotation with allow users to wrap methods or classes in a span. The TraceClass annotation will come with the ability to exclude private methods, and whether to include a method name in the span name/events. 
 
-Go to the Zipkin console at http://external_ip:9411
-Click on Find Traces. You should see something like 
-[this screenshot](screenshots/zipkin.png).
+@TraceMethod fields: 
+- String: name
+- Boolean: isEvent (if true, creates event using method signature and adds it to a span)
 
-Select one of the traces to view the details.
+@TraceClass fields: 
+- String: name
+- Boolean: includeMethodName (logs method signature)
+- Boolean: includePrivateMethods
 
-## Troubleshooting
-### Kubernetes Workloads
 
-If you have trouble deploying workloads or service then use the 
-[kubectl command](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands)
+### Create @TraceControllers
 
-```shell
-kubectl get pods
+This annotation adds wraps all RestControllers in a span using HandlerInterceptors. An example of initializing HandlerInterceptors can be seen [here](otel-example/foodfinder/src/main/java/starterproject/foodfinder/telemetry/InterceptorConfig.java). 
+
+This annotation will contain the @ConfigTracer functionality. ***I am not sure if this will cause confusion, please advise?*** 
+
+Example Usage:
+
+```
+@TraceControllers 
+@SpringBootApplication
+public class FoodSupplierApplication {
+
+	public static void main(String[] args) throws IOException {
+		SpringApplication.run(FoodSupplierApplication.class, args);
+	}
+}
 ```
 
-This will show the name and status of each pod. To view the detailed status and
-deployment errors for a pod use the command
+@TraceControllers fields: 
+- Fields:
+Boolean: methodIsLogged 
 
-```shell
-kubectl describe pod [POD NAME]
+creates new span for every request. Sets name to HTTPMethod + url. If logMethodCall is true. Event: Controller Name + Method Name, is added 
+
+
+### Create @TraceDatabase
+
+This will have similar functionality to @TracedMethod. When placed on a method or class with a call to `java.sql.PreparedStatement.execute*`, this annotation will wrap that database call in a span. 
+
+
+
+## Challenges 
+
+One challenge that maybe beyong the scope of this package is context propagation. As of now OpenTelemetry does not support popular web clients such as gRPC or Spring's RestTemplate (which leverages the Java Servlet API). The only documentation I can find on context propagation involves using a carrier such as HttpURLConnection and injecting the span context to this connection. I used this approach in the example above where I used the helper class HttpUtils.call_endpoint to create an HttpURLConnection to propagate the span context from FoodFinder to FoodSupplier. A example show casing this usage is shown below:
+
+```
+public class HttpUtils {
+    
+    @Autowired
+    private static Tracer tracer;
+    
+    private static final HttpTextFormat<SpanContext> textFormat = tracer.getHttpTextFormat();
+    private static final HttpTextFormat.Setter<HttpURLConnection> setter =
+            new HttpTextFormat.Setter<HttpURLConnection>() {
+      public void put(HttpURLConnection carrier, String key, String value) {
+        carrier.setRequestProperty(key, value);
+      }
+    };
+
+	private static HttpURLConnection addSpanContextToConnection(String 	url) throws Exception {
+		HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+		
+		Span span = tracer.getCurrentSpan();
+		textFormat.inject(span.getContext(), conn, setter);
+		
+		return conn;
+	}
+    
+
 ```
 
-You can also view the workloads in the Google Cloud Platform console, such as
-in [this screenshot](screenshots/gcp_workloads.png).
+Open Tracing contains support for injecting and extracting the span context in to a payload as can be seen in these contributions:
 
-### Prometheus targets
+https://github.com/opentracing-contrib/java-web-servlet-filter  (injection)
+java-okhttp: https://github.com/opentracing-contrib/java-okhttp (extraction)
+java-apache-httpclient: https://github.com/opentracing-contrib/java-apache-httpclient (extraction)
+java-asynchttpclient: https://github.com/opentracing-contrib/java-asynchttpclient (extraction)
+Spring’s RestTemplate: https://github.com/opentracing-contrib/java-spring-web/tree/master/opentracing-spring-web (extraction)
 
-Prometheus collects metrics by scraping targets over HTTP. Two common problems
-are (1) the targets are not configured or (2_ the targets are not reachable.
-To check the configured targets go to http://external-ip:9090/targets
-You should see something like 
-[this screenshot](screenshots/prometheus_targets.png) listing the OpenTelemetry
-collector as a target.
+Support for one or two of these Web Clients can be added in OpenTelemetry. This would improve the user friendliness of enabling span propagation. 
 
-Check that the target is available in the Kubernetes service for the
-OpenTelemetry collector with the command
 
-```shell
-kubectl describe service otel-collector
-Port:              prom-metrics  8888/TCP
-TargetPort:        8888/TCP
-Endpoints:         10.16.1.50:8888
-Port:              prom-exporter  8889/TCP
-TargetPort:        8889/TCP
+### Another Approach (seems easier and easier to apply to different frameworks)
+
+Ideally users will not need to create a carrier and manually inject the span context into a request. I did some digging and found that `io.opentelemetry.propagation.HttpTraceContext.java` sets the "traceparent" to parent_trace_id and the "tracestate" to a list of trace states in the header of a request. By exposing the functionality of HttpTraceContext.inject() such that otel adopters can retrieve these key-value pairs and set these values in request headers. 
+
+The goal would be to add a ClientHttpRequestInterceptor to otel spring projects to propagate a span context. ***I'm not sure if this approach is desirable, please advice***  
+
+
 ```
-
-In this configuration, port 8889 provides the app metrics whereas port 8888
-provides the metrics for the collector.
-
-### Logs
-
-To view the logs for a pod use the command
-
-```shell
-kubectl logs [POD NAME]
+@Component
+public class RestTemplateHeaderModifierInterceptor implements ClientHttpRequestInterceptor {
+	
+	@Autowired
+    Tracer tracer;
+	
+	@Override
+	public ClientHttpResponse intercept(HttpRequest request, byte[] body,
+			ClientHttpRequestExecution execution) throws IOException {
+		
+		String traceId = tracer.getCurrentSpan().getContext().getTraceId().toLowerBase16();
+		
+		request.getHeaders().add("traceparent", traceId);
+		request.getHeaders().add("tracestate", "state1,state2");
+		
+		ClientHttpResponse response = execution.execute(request, body);
+		
+		return response;
+	}
+}
 ```
+ 
 
-The container logs can also be viewed in the GCP console. You
-can easily find them by first navigating to the workload that you are interested
-in and following the link to container logs, such as in
-[this screenshot](screenshots/gcp_container_logs.png).
 
-### Volume mounts
 
-Volume mounts are a common problem in deploying Kubernetes workloads. The
-Prometheus, OpenTelemetry collector, and agent all require
-[volume](https://kubernetes.io/docs/concepts/storage/volumes/) mounts for
-configuration files. Use this command to list the
-[configmaps](https://kubernetes.io/docs/concepts/storage/volumes/#configmap):
 
-```shell
-kubectl get configmap
-```
 
-To see the details of the configmap use the command
 
-```shell
-kubectl describe configmap [name]
-```
 
-The volume mounts themselves are specified in the Kubernetes
-[deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
-files.
 
-### zPages
-[zPages](https://opencensus.io/zpages/) may help with Troubleshooting of network
-paths within the cluster. To view these, enable Kubernetes port forwarding to
-either the agent or collector pod with the command
 
-```shell
-kubectl port-forward [POD NAME]  55679:55679
-```
 
-The navigate to the pages:
-http://localhost:55679/debug/rpcz
-and
-http://localhost:55679/debug/tracez
+
+
+
+
+
+
