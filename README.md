@@ -158,7 +158,10 @@ public class FoodFinderController
 }
 ```
 
-```
+HttpUtils is a helper class which injects the span context into request headers. For this example I used Spring's RestTemplate to send requests from FoodFinder and FoodSupplier. A similar approach can be used with popular Java Web Clients such as okhttp and apache http client. The key is to override the put method in HttpTextFormat.Setter<?> to handle your request format. HttpTextFormat.inject will use this setter to set the traceparent and tracestate fields in your request. These values will be used to propagate your span context to external services.
+
+
+```java
 @Component
 public class HttpUtils {
     
@@ -166,46 +169,35 @@ public class HttpUtils {
     private Tracer tracer;
     
     private HttpTextFormat<SpanContext> textFormat;
-    private  HttpTextFormat.Setter<HttpURLConnection> setter;
+    private HttpTextFormat.Setter<HttpHeaders> setter;
+    private RestTemplate restTemplate;
     
     public HttpUtils(Tracer tracer) {
     	textFormat = tracer.getHttpTextFormat();
-        setter =
-                new HttpTextFormat.Setter<HttpURLConnection>() {
-          public void put(HttpURLConnection carrier, String key, String value) {
-            carrier.setRequestProperty(key, value);
-          }
-        }; 
+        setter = new HttpTextFormat.Setter<HttpHeaders>() {
+            @Override
+            public void put(HttpHeaders headers, String key, String value)
+            {
+            	headers.set(key, value);
+            }
+        };
+        
+        restTemplate  = new RestTemplate();
     }
     
-	public String callEndpoint(String url, Serializable requestBody, HttpMethod method) throws Exception {
- 
-        Span span = tracer.getCurrentSpan();
-        span.addEvent("Request sent to Microservice");
- 
-        HttpURLConnection conn = getConnectionWithSpanContext(url, method, span);
-        return readResponse(conn);
-    }
+	public String callEndpoint(String url) throws Exception {
+		HttpHeaders headers = new HttpHeaders();
+        
+		Span currentSpan = tracer.getCurrentSpan();
+        textFormat.inject(currentSpan.getContext(), headers, setter);
+        
+        HttpEntity<String> entity = new HttpEntity<String>(headers);
+		
+		ResponseEntity<String> response = restTemplate.
+       		 exchange(url, HttpMethod.GET, entity, String.class);
 
-	private HttpURLConnection getConnectionWithSpanContext(String url, HttpMethod method, Span span) throws IOException, MalformedURLException, ProtocolException {
-		HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
-		textFormat.inject(span.getContext(), conn, setter);
-		conn.setRequestMethod(method.name());
-		return conn;
-	}
-    
-    private String readResponse(HttpURLConnection conn) throws IOException {
-		StringBuilder result = new StringBuilder();
-		
-		BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-		String line;
-		while ((line = rd.readLine()) != null) {
-		    result.append(line);
-		}
-		rd.close();
-		
-		return result.toString();
-	}
+		return response.getBody(); 
+    }
 }
 ```
 
@@ -402,42 +394,22 @@ Creates new span for every request. Sets name to HTTPMethod + url. If logMethodC
 This will have similar functionality to @TracedMethod. When placed on a method or class with a call to `java.sql.PreparedStatement.execute*`, this annotation will wrap that database call in a span. 
 
 
-## Challenges 
+### Create @TraceRestTemplate
 
-One challenge to improving user experience is context propagation. As of now OpenTelemetry does not support popular web clients such as gRPC, Spring's RestTemplate or Apache Http Client. The only documentation I can find on context propagation involves using a carrier such as HttpURLConnection and injecting the span context to this connection. I used this approach in an example above where I used the helper class HttpUtils.call_endpoint to create an HttpURLConnection to propagate the span context from FoodFinder to FoodSupplier. A example show casing this usage is shown below:
+To replace the HttpUtils class and abstract the injection of the span context into request headers. Similar to the proposed @TraceControllers, this annotation will use an interceptor. Using the ClientHttpRequestInterceptor I will propagate the current span context to  all external requests which use RestTemplate. The core of the proposed functionality can be seen here: (RestClientConfig)[foodfinder/src/main/java/starterproject/foodfinder/telemetry/RestClientConfig.java] and (RestTemplateHeaderModifierInterceptor.java)[foodfinder/src/main/java/starterproject/foodfinder/telemetry/RestTemplateHeaderModifierInterceptor.java]
 
-```java
-public class HttpUtils {
-    
-    @Autowired
-    private static Tracer tracer;
-    
-    private HttpTextFormat<SpanContext> textFormat;
-    private  HttpTextFormat.Setter<HttpURLConnection> setter;
-    
-    public HttpUtils(Tracer tracer) {
-    	textFormat = tracer.getHttpTextFormat();
-        setter =
-                new HttpTextFormat.Setter<HttpURLConnection>() {
-          public void put(HttpURLConnection carrier, String key, String value) {
-            carrier.setRequestProperty(key, value);
-          }
-        }; 
-    }
+This is a first attempt and I will experiment with scaling this functionality to handle other web clients such as Apache Http Client, and gRPC. ***Please advice on this approach***
 
-	private static HttpURLConnection addSpanContextToConnection(String 	url) throws Exception {
-		HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
-		
-		Span span = tracer.getCurrentSpan();
-		textFormat.inject(span.getContext(), conn, setter);
-		
-		return conn;
-	}
-    
 
-```
+@TraceRestTemplate fields: 
+- No proposed Fields as of now
 
-Open Tracing has contributions for injecting and extracting the span context in to a payload as can be seen in these contributions:
+
+### Alternative to @TraceRestTemplate
+
+One challenge to improving user experience is context propagation. As of now OpenTelemetry does not support popular web clients such as gRPC, Spring's RestTemplate or Apache Http Client. The only documentation I can find on context propagation involves manually injecting a span context into a request header. I used this approach in an example in the helper method HttpUtils.call_endpoint to propagate the span context from FoodFinder to FoodSupplier. In my proposed @TraceRestTemplate annotation I will provide this functionality to users. However it will only support one framework in a limited fashion.
+
+Open Tracing has library instrumentation for injecting and extracting the span context in to a payload as can be seen below:
 
 (ava-web-servlet-filter)[https://github.com/opentracing-contrib/java-web-servlet-filter]  (inject)
 
@@ -446,56 +418,6 @@ java-apache-httpclient: https://github.com/opentracing-contrib/java-apache-httpc
 java-asynchttpclient: https://github.com/opentracing-contrib/java-asynchttpclient (extract)
 Spring’s RestTemplate: https://github.com/opentracing-contrib/java-spring-web/tree/master/opentracing-spring-web (extract)
 
-Support for one or two of these Web Clients should be added in OpenTelemetry as well. This would improve the user friendliness of enabling span propagation. 
+Support for one or two of these Web Clients should be added in OpenTelemetry as well. This would improve the user friendliness of span propagation. This approach would make my proposed @TraceRestTemplate obsolete, however it seems to be a better approach. 
 
 I can pick up this work after adding the annotations. Unless someone is already working on this. If so, I can pitch in to help :)
-
-
-### Another Approach (seems easier to apply to different frameworks but might break conventions or have serious draw backs)
-
-Ideally users will not need to implement the inject and extract methods to propagate the span context into a request. Atleast with popular frameworks. I did some digging and found that `io.opentelemetry.propagation.HttpTraceContext.java` sets the "traceparent" field to the trace id of the span context and the "tracestate" to a list of trace states in the header of a request. It also involves some formatting. This alternate approach would involve exposing the functionality of HttpTraceContext.inject() such that OpenTelementry adopters can retrieve these key-value pairs from the span context and set these values in request headers. 
-
-The goal would be to add a ClientHttpRequestInterceptor to otel spring projects to propagate a span context. ***I'm not sure if this approach is desirable, please advice***  
-
-
-```java
-@Component
-public class RestTemplateHeaderModifierInterceptor implements ClientHttpRequestInterceptor {
-	
-	@Autowired
-    Tracer tracer;
-	
-	@Override
-	public ClientHttpResponse intercept(HttpRequest request, byte[] body,
-			ClientHttpRequestExecution execution) throws IOException {
-		
-		String traceId = tracer.getCurrentSpan().getContext().getTraceId().toLowerBase16();
-		
-		//Implementation something like this but instead of hardcored strings the constants could be supplied by otel?
-		
-		request.getHeaders().add("traceparent", traceId);
-		request.getHeaders().add("tracestate", "state1,state2");
-		
-		ClientHttpResponse response = execution.execute(request, body);
-		
-		return response;
-	}
-}
-```
- 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
