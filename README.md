@@ -78,7 +78,7 @@ The file above contains configures an OpenTelemetry tracer which can be AutoWire
 
 Sample configuration for a JaegerExporter:
 
-```
+```java
 SpanProcessor jaegerProcessor =
         SimpleSpansProcessor.newBuilder(JaegerGrpcSpanExporter.newBuilder()
             .setServiceName("otel_foodservices") 
@@ -100,12 +100,13 @@ FoodSupplier contains a list of a ingredients and maps it to different vendors. 
 
 #### Setup FoodFinder spring project:
 
-Step 1: Add OpenTelemetry Dependencies
-Step 2: Add OpenTelemetry Configuration
-Step 3: Add SpringBoot main class 
-Step 4: Create a RestController for FoodFinder
-Step 5: Start a span to wrap the FoodFinderController
-Step 6: Configure HttpUtils.callEndpoint to inject span context into request header. This is key to propagate the trace to the FoodSupplier
+1. Add OpenTelemetry Dependencies
+2. Add OpenTelemetry Configuration
+3. Add SpringBoot main class 
+4. Create a RestController for FoodFinder
+5. Start a span to wrap the FoodFinderController
+6. Configure HttpUtils.callEndpoint to inject span context into request
+7. This is key to propagate the trace to the FoodSupplier
 
 
 ```java
@@ -198,11 +199,11 @@ public class HttpUtils {
 
 #### Setup FoodSupplier spring project:
 
-Step 1: Add OpenTelemetry Dependencies
-Step 2: Add OpenTelemetry Configuration
-Step 3: Add SpringBoot main class 
-Step 4: Create a RestController for FoodSupplier
-Step 5: Start a span to wrap the FoodSupplierController
+1. Add OpenTelemetry Dependencies
+2. Add OpenTelemetry Configuration
+3. Add SpringBoot main class 
+4. Create a RestController for FoodSupplier
+5. Start a span to wrap the FoodSupplierController
 
 **Note: The default port for the Apache Tomcat is 8080. On localhost both FoodFinder and FoodSupplier services will attempt to run on this port raising an error. To avoid this add `server.port=8081` to the application.properties in the Springboot resource directory. Ensure the port used corresponds to port referenced by FoodFinderController.FS_URL. **
   
@@ -295,7 +296,7 @@ Expect response:
 ]
 ```
 
-Ingredient data is stored in foodvendor/src/main/resources/vendors.json and vendors data is stored in foodsupplier/src/main/resources/suppliers.json.
+Ingredient data is stored in [foodvendor](foodvendor/src/main/resources/vendors.json) and vendors data is stored in [foodsupplier](foodsupplier/src/main/resources/suppliers.json).
 
 
 ## Proposed Improvements
