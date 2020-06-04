@@ -34,15 +34,17 @@ public class FoodService {
 	private static final String FOOD_VENDOR_PATH = "foodvendor.path";
 	
 	private static final String INGREDIENT_NAME_PARAM = "ingredientName";
-    
 	
+	@Autowired
+	private HttpUtils httpUtils;
+   
 	@Autowired
     private Environment env;
     
     public Vendor[] getVendorsByIngredient(String ingredientName) throws Exception {
     	 String url = getUrl(FOOD_SUPPLIER_ADDRESS, FOOD_SUPPLIER_PORT, FOOD_SUPPLIER_PATH, ingredientName);
         
-    	 String responseJson = HttpUtils.callEndpoint(url, null, HttpMethod.GET);
+    	 String responseJson = httpUtils.callEndpoint(url, null, HttpMethod.GET);
     	 Vendor[] vendors = new ObjectMapper().readValue(responseJson, Vendor[].class);
     	 
     	 return vendors; 
@@ -51,7 +53,7 @@ public class FoodService {
     public VendorInventory[] getIngredientFromVendors(Vendor[] vendors, String ingredientName) throws Exception {
         String url = getUrl(FOOD_VENDOR_ADDRESS, FOOD_VENDOR_PORT, FOOD_VENDOR_PATH, ingredientName);
         
-        String responseJson = HttpUtils.callEndpoint(url, vendors, HttpMethod.POST);
+        String responseJson = httpUtils.callEndpoint(url, vendors, HttpMethod.POST);
         VendorInventory[] vendorInventory = new ObjectMapper().readValue(responseJson, VendorInventory[].class);
         
         return vendorInventory;

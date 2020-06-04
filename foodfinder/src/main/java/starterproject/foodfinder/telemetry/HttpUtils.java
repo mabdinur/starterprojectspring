@@ -3,14 +3,20 @@ package starterproject.foodfinder.telemetry;
 import java.util.logging.Logger;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Configurable;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.oxm.xstream.XStreamMarshaller;
+import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.opentelemetry.OpenTelemetry;
 import io.opentelemetry.context.propagation.HttpTextFormat;
 import io.opentelemetry.trace.Span;
 import io.opentelemetry.trace.SpanContext;
@@ -29,24 +35,30 @@ import java.net.URL;
 import java.net.URLConnection;
 
 /**
- * Adds opencensus span context to requests
+ * Propagates opentelemetry span context to requests
  *
  */
+@Component
 public class HttpUtils {
     private static final Logger LOG = Logger.getLogger(HttpUtils.class.getName());
     
     @Autowired
-    private static Tracer tracer;
+    private Tracer tracer;
     
-    private static final HttpTextFormat<SpanContext> textFormat = tracer.getHttpTextFormat();
-    private static final HttpTextFormat.Setter<HttpURLConnection> setter =
-            new HttpTextFormat.Setter<HttpURLConnection>() {
-      public void put(HttpURLConnection carrier, String key, String value) {
-        carrier.setRequestProperty(key, value);
-      }
-    };
-
-	public static String callEndpoint(String url, Serializable requestBody, HttpMethod method) throws Exception {
+    private HttpTextFormat<SpanContext> textFormat;
+    private  HttpTextFormat.Setter<HttpURLConnection> setter;
+    
+    public HttpUtils(Tracer tracer) {
+    	textFormat = tracer.getHttpTextFormat();
+        setter =
+                new HttpTextFormat.Setter<HttpURLConnection>() {
+          public void put(HttpURLConnection carrier, String key, String value) {
+            carrier.setRequestProperty(key, value);
+          }
+        }; 
+    }
+    
+	public String callEndpoint(String url, Serializable requestBody, HttpMethod method) throws Exception {
     	LOG.info(String.format("Calling endpoint: %s, method: %s", url, method));
     	
         Span span = tracer.getCurrentSpan();
@@ -63,7 +75,7 @@ public class HttpUtils {
         return result;
     }
 
-	private static HttpURLConnection getConnectionWithSpanContext(String url, HttpMethod method, Span span)
+	private HttpURLConnection getConnectionWithSpanContext(String url, HttpMethod method, Span span)
 			throws IOException, MalformedURLException, ProtocolException {
 		HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
 		textFormat.inject(span.getContext(), conn, setter);
@@ -71,7 +83,7 @@ public class HttpUtils {
 		return conn;
 	}
     
-    private static void addBodyToRequest(URLConnection httpCon, Serializable requestObj) throws IOException {
+    private void addBodyToRequest(URLConnection httpCon, Serializable requestObj) throws IOException {
     	httpCon.setDoOutput(true);
     	httpCon.setRequestProperty(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
     	
@@ -86,11 +98,11 @@ public class HttpUtils {
     	os.close();
     }
     
-    private static String objectToJSON(Serializable obj) throws JsonProcessingException {
+    private String objectToJSON(Serializable obj) throws JsonProcessingException {
 		return new ObjectMapper().writeValueAsString(obj);
     }
     
-    private static String readResponse(HttpURLConnection conn) throws IOException {
+    private String readResponse(HttpURLConnection conn) throws IOException {
 		StringBuilder result = new StringBuilder();
 		
 		BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
