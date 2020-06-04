@@ -264,7 +264,7 @@ Sample request: localhost:8080/foodfinder/ingredient?ingredientName=item3
 
 Expect response: 
 
-```
+```json
 [
     {
         "vendor": {
@@ -302,7 +302,7 @@ Ingredient data is stored in foodvendor/src/main/resources/vendors.json and vend
 
 ### Create new spring contrib package for Open Telemetry  
 
-```
+```xml
  <dependency>
     <groupId>io.opentelemetry</groupId>
     <artifactId>opentelemetry-contrib-spring</artifactId>
@@ -321,7 +321,7 @@ To use the annotations below you must place this annotation on the the main clas
 
 Example Usage:
 
-```
+```java
 @ConfigTracer 
 @SpringBootApplication
 public class FoodSupplierApplication {
@@ -357,7 +357,7 @@ This annotation will contain the @ConfigTracer functionality. ***I am not sure i
 
 Example Usage:
 
-```
+```java
 @TraceControllers 
 @SpringBootApplication
 public class FoodSupplierApplication {
@@ -385,7 +385,7 @@ This will have similar functionality to @TracedMethod. When placed on a method o
 
 One challenge that maybe beyong the scope of this package is context propagation. As of now OpenTelemetry does not support popular web clients such as gRPC or Spring's RestTemplate (which leverages the Java Servlet API). The only documentation I can find on context propagation involves using a carrier such as HttpURLConnection and injecting the span context to this connection. I used this approach in the example above where I used the helper class HttpUtils.call_endpoint to create an HttpURLConnection to propagate the span context from FoodFinder to FoodSupplier. A example show casing this usage is shown below:
 
-```
+```java
 public class HttpUtils {
     
     @Autowired
@@ -429,7 +429,7 @@ Ideally users will not need to create a carrier and manually inject the span con
 The goal would be to add a ClientHttpRequestInterceptor to otel spring projects to propagate a span context. ***I'm not sure if this approach is desirable, please advice***  
 
 
-```
+```java
 @Component
 public class RestTemplateHeaderModifierInterceptor implements ClientHttpRequestInterceptor {
 	
