@@ -148,6 +148,7 @@ Here we will create rest controllers for FirstService and SecondService.
 FirstService will send a GET request to SecondService to get the current time. First Service will return SecondSerivce's time with a fun little message. 
 
 
+### Tutorial  1: Manual Instrumentation with Java SDK
 
 #### Setup FirstService spring project:
 
@@ -333,6 +334,10 @@ To view traces on the Jaeger UI add the Jaeger Exporter to both FirstService and
 
 After running Jaeger locally, refresh the UI and view the exported traces from the two web services. Congrats, you created a distributed service with OpenTelemetry!
 
+### Tutorial  2: Using Spring Handlers and Interceptors
+
+
+
 
 ### otel-example 
 
@@ -384,13 +389,9 @@ Trace:
 ![Alt text](https://screenshot.googleplex.com/xi7hzNAukHv.png)
 
 Note: This data is read from a json file. Ingredient data is stored in [FoodVendor](foodvendor/src/main/resources/vendors.json) and vendors data is stored in [FoodSupplier](foodsupplier/src/main/resources/suppliers.json).
+ 
 
-
-## Manual Instrumentation using Spring Handlers/Interceptors
-
-Using the FirstService and SecondService above we can extract  
-
-## Proposed Improvements
+## Tutorial 3: OpenTelemetry using the Spring Contribution (IN PROGRESS) 
 
 ### Create new spring contrib package for Open Telemetry  
 
@@ -444,16 +445,16 @@ These new annotation with allow users to wrap methods or classes in a span. The 
 - Boolean: includePrivateMethods
 
 
-### Create @TraceControllers
+### Create @TraceRestControllers
 
 This annotation adds wraps all RestControllers in a span using HandlerInterceptors. An example of initializing HandlerInterceptors can be seen [here](foodfinder/src/main/java/starterproject/FirstService/telemetry/InterceptorConfig.java). 
 
-This annotation will contain the @ConfigTracer functionality. ***I am not sure if this will cause confusion, please advise?*** 
+This annotation will contain the @ConfigTracer functionality.
 
 Example Usage:
 
 ```java
-@TraceControllers 
+@TraceRestControllers 
 @SpringBootApplication
 public class SecondServiceApplication {
 
@@ -463,7 +464,7 @@ public class SecondServiceApplication {
 }
 ```
 
-@TraceControllers fields: 
+@TraceRestControllers fields: 
 - Fields:
 Boolean: methodIsLogged 
 
@@ -472,25 +473,43 @@ Creates new span for every request. Sets name to HTTPMethod + url. If logMethodC
 
 ### Create @TraceDatabase
 
-This will have similar functionality to @TracedMethod. When placed on a method or class with a call to `java.sql.PreparedStatement.execute*`, this annotation will wrap that database call in a span. 
+This will have similar functionality to @TracedMethod. When placed on a method or class with a call to `java.sql.PreparedStatement.execute*`, this annotation will wrap that database call in a span. This tracer logs the status of the executed transaction as a span event.
+
+Example usage:
+
+```java
+@TraceDatabase(name="traceName") 
+public static getRecordFromDb(String sqlStatement) throws Exception {
+        Class.forName("com.mysql.cj.jdbc.Driver");
+        Connection con = DriverManager.getConnection("jdbc:mysql://db.com:3306/core","username","password");
+        Statement stmt = con.createStatement();
+        stmt.execute(sqlStatement);
+}
+```
+
+@TraceDatabase fields: 
+- Fields:
+String: name
+Boolean: statusIsLogged (default false) 
 
 
 ### Create @TraceRestTemplate
 
-To replace the HttpUtils class and abstract the injection of the span context into request headers. Similar to the proposed @TraceControllers, this annotation will use an interceptor. Using the ClientHttpRequestInterceptor I will propagate the current span context to  all external requests which use RestTemplate. The core of the proposed functionality can be seen here: (RestClientConfig)[foodfinder/src/main/java/starterproject/FirstService/telemetry/RestClientConfig.java] and (RestTemplateHeaderModifierInterceptor.java)[foodfinder/src/main/java/starterproject/FirstService/telemetry/RestTemplateHeaderModifierInterceptor.java]
+This annotation supports the Spring RestTemplate Frame. It injects the current span context into requests to external services. If a span doesn't exist it creates one using the name field. If the name is null the default name is the http method of the request + url.
 
-This is a first attempt and I will experiment with scaling this functionality to handle other web clients such as Apache Http Client, and gRPC. ***Please advice on this approach***
+
+The core of the proposed functionality can be seen here: (RestClientConfig)[foodfinder/src/main/java/starterproject/FirstService/telemetry/RestClientConfig.java] and (RestTemplateHeaderModifierInterceptor.java)[foodfinder/src/main/java/starterproject/FirstService/telemetry/RestTemplateHeaderModifierInterceptor.java]
 
 
 @TraceRestTemplate fields: 
-- No proposed Fields as of now
+- String: name
 
 
-### Alternative to @TraceRestTemplate
+### Alternative to @TraceRestTemplate (Note to self and other contributors)
 
 One challenge to improving user experience is context propagation. As of now OpenTelemetry does not support popular web clients such as gRPC, Spring's RestTemplate or Apache Http Client. The only documentation I can find on context propagation involves manually injecting a span context into a request header. I used this approach in an example in the helper method HttpUtils.call_endpoint to propagate the span context from FirstService to SecondService. In my proposed @TraceRestTemplate annotation I will provide this functionality to users. However it will only support one framework in a limited fashion.
 
-Open Tracing has library instrumentation for injecting and extracting the span context in to a payload as can be seen below:
+Open Tracing has library instrumentation for injecting and extracting the span context into a payload as can be seen below:
 
 (ava-web-servlet-filter)[https://github.com/opentracing-contrib/java-web-servlet-filter]  (inject)
 
@@ -499,6 +518,6 @@ java-apache-httpclient: https://github.com/opentracing-contrib/java-apache-httpc
 java-asynchttpclient: https://github.com/opentracing-contrib/java-asynchttpclient (extract)
 Spring’s RestTemplate: https://github.com/opentracing-contrib/java-spring-web/tree/master/opentracing-spring-web (extract)
 
-Support for one or two of these Web Clients should be added in OpenTelemetry as well. This would improve the user friendliness of span propagation. This approach would make my proposed @TraceRestTemplate obsolete, however it seems to be a better approach. 
+Support for one or two of these Web Clients should be added in OpenTelemetry as well. This would improve the user friendliness of span propagation. This approach would make my proposed @TraceRestTemplate obsolete. 
 
 I can pick up this work after adding the annotations. Unless someone is already working on this. If so, I can pitch in to help :)
