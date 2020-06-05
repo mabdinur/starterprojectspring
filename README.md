@@ -56,21 +56,34 @@ Using https://start.spring.io/ create two spring projects using maven, SpringBoo
 ### Add OpenTelemetry Tracer to Configuration to Spring Project
 
 ```java
-package com.package.name;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import io.opentelemetry.OpenTelemetry;
+import io.opentelemetry.sdk.OpenTelemetrySdk;
+import io.opentelemetry.sdk.trace.SpanProcessor;
+import io.opentelemetry.sdk.trace.export.SimpleSpansProcessor;
+import io.opentelemetry.trace.Tracer;
+
+import io.opentelemetry.exporters.logging.*;
+
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 
 @Configuration
-@EnableAutoConfiguration (exclude={DataSourceAutoConfiguration.class, HibernateJpaAutoConfiguration.class})
+@EnableAutoConfiguration(exclude = { DataSourceAutoConfiguration.class, HibernateJpaAutoConfiguration.class })
 public class OtelConfig {
 
     @Bean
-	public Tracer otelTracer() throws Exception{
-        final Tracer tracer = OpenTelemetry.getTracerFactory().get("project.name");
+    public Tracer otelTracer() throws Exception {
+	final Tracer tracer = OpenTelemetry.getTracerFactory().get("otel-example");
 
-        SpanProcessor logProcessor = SimpleSpansProcessor.newBuilder(new LoggingExporter()).build();
+	SpanProcessor logProcessor = SimpleSpansProcessor.newBuilder(new LoggingExporter()).build();
 
-		OpenTelemetrySdk.getTracerFactory(). addSpanProcessor(logProcessor);
+	OpenTelemetrySdk.getTracerFactory().addSpanProcessor(logProcessor);
 
-        return tracer;
+	return tracer;
     }
 }
 ```
@@ -80,13 +93,13 @@ The file above configures an OpenTelemetry tracer which can be Autowired in a sp
 Sample configuration for a JaegerExporter:
 
 ```java
-SpanProcessor jaegerProcessor =
-        SimpleSpansProcessor.newBuilder(JaegerGrpcSpanExporter.newBuilder()
-            .setServiceName("otel_foodservices") 
-            .setChannel(ManagedChannelBuilder.forAddress(
-                    "localhost", 14250).usePlaintext().build())
-            .build()).build();
+//import io.grpc.ManagedChannelBuilder;
+//import io.opentelemetry.exporters.jaeger.JaegerGrpcSpanExporter;
 
+	SpanProcessor jaegerProcessor = SimpleSpansProcessor.newBuilder(JaegerGrpcSpanExporter.newBuilder()
+		.setServiceName("otel_foodfinder")
+		.setChannel(ManagedChannelBuilder.forAddress("localhost", 14250).usePlaintext().build()).build())
+		.build();
 OpenTelemetrySdk.getTracerFactory().addSpanProcessor(jaegerProcessor);
 ```
 
@@ -124,37 +137,44 @@ public class FoodFinderApplication {
 
 
 ```java
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import io.opentelemetry.context.Scope;
+import io.opentelemetry.trace.Span;
+import io.opentelemetry.trace.Tracer;
+
+import HttpUtils;
+
 @RestController
 @RequestMapping(value = "/ingredient")
-public class FoodFinderController
-{
-	@Autowired
-	private Tracer tracer;
-	
-	@Autowired
-	HttpUtils httpUtils;
-	
-    private static String FS_URL = "localhost:8081/ingredient/milk";
-		
-	@GetMapping
-	public String getMilk()
-	{
-		Span span = tracer.spanBuilder("ingredient").startSpan();
-       span.addEvent("Controller Entered");
-       span.setAttribute("ingredient.name", "milk");
+public class FoodFinderController {
+    @Autowired
+    private Tracer tracer;
 
-       try(Scope scope = tracer.withSpan(span)){
-           return httpUtils.callEndpoint(FS_URL, HttpMethod.GET);
-       }
-       catch(Exception e){
-           span.addEvent("error");
-           span.setAttribute("error", true);
-           return "MILK VENDORS CAN'T BE FOUND";
-       }
-       finally{
-           span.end();
-       }
+    @Autowired
+    HttpUtils httpUtils;
+
+    private static String FS_URL = "http://localhost:8081/ingredient/milk";
+
+    @GetMapping
+    public String getMilk() {
+	Span span = tracer.spanBuilder("ingredient").startSpan();
+	span.addEvent("Controller Entered");
+	span.setAttribute("ingredient.name", "milk");
+
+	try (Scope scope = tracer.withSpan(span)) {
+	    return httpUtils.callEndpoint(FS_URL);
+	} catch (Exception e) {
+	    span.setAttribute("error", e.toString());
+	    span.setAttribute("error", true);
+	    return "MILK VENDORS CAN'T BE FOUND";
+	} finally {
+	    span.end();
 	}
+    }
 }
 ```
 
@@ -162,41 +182,52 @@ HttpUtils is a helper class which injects the span context into request headers.
 
 
 ```java
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
+
+import io.opentelemetry.context.propagation.HttpTextFormat;
+import io.opentelemetry.trace.Span;
+import io.opentelemetry.trace.SpanContext;
+import io.opentelemetry.trace.Tracer;
+
 @Component
 public class HttpUtils {
-    
+
     @Autowired
     private Tracer tracer;
-    
+
     private HttpTextFormat<SpanContext> textFormat;
     private HttpTextFormat.Setter<HttpHeaders> setter;
     private RestTemplate restTemplate;
-    
-    public HttpUtils(Tracer tracer) {
-    	textFormat = tracer.getHttpTextFormat();
-        setter = new HttpTextFormat.Setter<HttpHeaders>() {
-            @Override
-            public void put(HttpHeaders headers, String key, String value)
-            {
-            	headers.set(key, value);
-            }
-        };
-        
-        restTemplate  = new RestTemplate();
-    }
-    
-	public String callEndpoint(String url) throws Exception {
-		HttpHeaders headers = new HttpHeaders();
-        
-		Span currentSpan = tracer.getCurrentSpan();
-        textFormat.inject(currentSpan.getContext(), headers, setter);
-        
-        HttpEntity<String> entity = new HttpEntity<String>(headers);
-		
-		ResponseEntity<String> response = restTemplate.
-       		 exchange(url, HttpMethod.GET, entity, String.class);
 
-		return response.getBody(); 
+    public HttpUtils(Tracer tracer) {
+	textFormat = tracer.getHttpTextFormat();
+	setter = new HttpTextFormat.Setter<HttpHeaders>() {
+	    @Override
+	    public void put(HttpHeaders headers, String key, String value) {
+		headers.set(key, value);
+	    }
+	};
+
+	restTemplate = new RestTemplate();
+    }
+
+    public String callEndpoint(String url) throws Exception {
+	HttpHeaders headers = new HttpHeaders();
+
+	Span currentSpan = tracer.getCurrentSpan();
+	textFormat.inject(currentSpan.getContext(), headers, setter);
+
+	HttpEntity<String> entity = new HttpEntity<String>(headers);
+
+	ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+
+	return response.getBody();
     }
 }
 ```
@@ -213,38 +244,49 @@ public class HttpUtils {
   
 
 ```java
+import java.io.IOException;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
 @SpringBootApplication
 public class FoodSupplierApplication {
 
-	public static void main(String[] args) throws IOException {
-		SpringApplication.run(FoodSupplierApplication.class, args);
-	}
+    public static void main(String[] args) throws IOException {
+	SpringApplication.run(FoodSupplierApplication.class, args);
+    }
 }
 ```
 
 
 ```java
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import io.opentelemetry.context.Scope;
+import io.opentelemetry.trace.Span;
+import io.opentelemetry.trace.Tracer;
+
 @RestController
 @RequestMapping(value = "/ingredient/milk")
-public class FoodSupplierController
-{
-	@Autowired
+public class FoodSupplierController {
+    @Autowired
     private Tracer tracer;
-		
-	@GetMapping
-	public String getMilkVendors()
-	{
-		Span span = tracer.spanBuilder("ingredient").startSpan();
-       span.addEvent("FoodSupplierController Entered");
-       span.setAttribute("vendor.ingredient", "milk");
 
-       try(Scope scope = tracer.withSpan(span)){
-           return new String [] {"FooShop", "BarShop"}
-       }
-       finally{
-           span.end();
-       }
+    @GetMapping
+    public String[] getMilkVendors() {
+	Span span = tracer.spanBuilder("ingredient").startSpan();
+	span.addEvent("FoodSupplierController Entered");
+	span.setAttribute("vendor.ingredient", "milk");
+
+	try (Scope scope = tracer.withSpan(span)) {
+	    return new String[] { "FooShop", "BarShop" };
+	} finally {
+	    span.end();
 	}
+    }
 }
 ```
 
@@ -336,18 +378,21 @@ To use the annotations below you must place this annotation on the the main clas
 Example Usage:
 
 ```java
-@ConfigTracer 
+@ConfigTracer(name="tracerName")
 @SpringBootApplication
 public class FoodSupplierApplication {
 
-	public static void main(String[] args) throws IOException {
-		SpringApplication.run(FoodSupplierApplication.class, args);
-	}
+    public static void main(String[] args) throws IOException {
+	SpringApplication.run(FoodSupplierApplication.class, args);
+    }
+
 }
 ```
 
 This annotation will use this method:
 `OpenTelemetry.getTracerFactory().get("tracerName")`
+
+The default tracer name will be the the name of the main class.
  
 ### Create @TraceMethod and @TraceClass annotations 
 
