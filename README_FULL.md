@@ -650,7 +650,7 @@ Expect response:
 Note: This data is read from a json file. Ingredient data is stored in [FoodVendor](foodvendor/src/main/resources/vendors.json) and vendors data is stored in [FoodSupplier](foodsupplier/src/main/resources/suppliers.json).
  
 
-## Tutorial 3: OpenTelemetry using the Spring Contribution (IN PROGRESS) 
+## Tutorial 3: Instrumentation using opentelemetry-contrib-spring (IN PROGRESS) 
 
 ### Create new spring contrib package for Open Telemetry  
 
