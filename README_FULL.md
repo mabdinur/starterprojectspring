@@ -1,14 +1,16 @@
 # Manual Instrumentation Starter Guide: Spring and SpringBoot
 
-This package will streamline the manual instrumentation process in OpenTelemetry for Spring and SpringBoot. This will enable you to add tracing to requests, and database calls with minimal changes to application code. The objective of this package is not fully automated instrumentation, it is providing you with better tools to instrument your own code. 
+This package streamlines the manual instrumentation process in OpenTelemetry for Spring and SpringBoot. It will enable you to add traces to requests, and database calls with minimal changes to application code. This package will not fully automate your Open Telemetry instrumentation, instead it will provide you with better tools to instrument your own code.
+This contribution for OpenTelemetry will follow in the footsteps of the existing Spring integration in [OpenCensus](https://github.com/census-instrumentation/opencensus-java/tree/master/contrib/spring/src/main/java/io/opencensus/contrib/spring).
 
-This contribution for OpenTelemetry will follow in the footsteps of the existing Spring integrations in [OpenCensus](https://github.com/census-instrumentation/opencensus-java/tree/master/contrib/spring/src/main/java/io/opencensus/contrib/spring).
+This starter guide contains 3 tutorials. The first tutorial will walk you through span creation and propagation using the JavaSDK and RestTemplate. 
 
+The second tutorial will build on the first. It will walk you through implementing Spring's handler and interceptor interfaces to create traces without modifying existing application code. 
 
-This starter guide contains 3 tutorials. The first tutorial with will walk you through span creation and propagating requests through the Spring web client, RestTemplate. This second tutorial will show case how to implement Spring's handler and interceptor interfaces to add spans to rest controllers and propagate a span context to external services. This tutorial will NOT involve direct edits to existing application code. The third and final tutorial will detail how to use annotations and XML configurations defined in this package to leverages techniques from the first two tutorials. This tutorial will equip you with new tools to streamline the configuration of OpenTelemetry on Spring and SpringBoot.
-
+The third will detail how to use annotations and configurations defined in this package. This tutorial will equip you with new tools to streamline the configuration of OpenTelemetry on Spring and SpringBoot applications.
 
 To use the tools included in this package include the dependency below in your spring application:
+
 
 #### Maven
 ```xml
@@ -25,19 +27,19 @@ compile "io.opentelemetry:opentelemetry-contrib-spring:VERSION"
 ```
 
 
-## Manual Instrumentation with Java SDK
+## Tutorial 1:  Manual Instrumentation with Java SDK
 
 A sample user journey for manual instrumentation can be found on [lightstep](https://docs.lightstep.com/otel/getting-started-java-springboot). In this example we will create two spring web services using SpringBoot. Then we will trace the requests between these services using OpenTelemetry. Finally, we will discuss improvements that can be made to the process.
 
 
 ### Create two Spring Projects
 
-Using https://start.spring.io/ create two spring projects using maven, SpringBoot 2.3, Java, and the spring-web dependency. Name one project FirstService and the other SecondService. After downloading the the two projects make sure to include the OpenTelemetry dependencies listed below. 
+Using https://start.spring.io/ create two spring projects. Select maven, SpringBoot 2.3, Java, and add the spring-web dependency. Name one project FirstService and the other SecondService. After downloading the two projects make sure to include the OpenTelemetry dependencies listed below. 
 
 
 ### Setup for FirstService and SecondService
 
-Add the dependencies below to include OpenTelemetry. In the tutorial below we will use OpenTelemetry's Jaeger and Logging trace exporters. 
+Add the dependencies below to enable OpenTelemetry in FirstService and SecondService. The Jaeger and LoggerExporter packages are recommended but not required for this tutorial. 
 
 #### Maven
  
@@ -83,12 +85,12 @@ Add the dependencies below to include OpenTelemetry. In the tutorial below we wi
 </dependency>
 ```
 
-***Note: The packages opentelemetry-exporters-logging and opentelemetry-exporters-jaeger are used to export logs. If you plan to to use a different log exporter, adding these these dependencies is not required for this tutorial***
+***Note: The packages opentelemetry-exporters-logging and opentelemetry-exporters-jaeger are used to export logs. If you plan to to use a different  exporter include those packages instead***
  
 
-### Add OpenTelemetry Tracer to Configuration to Spring Project
+### Tracer Configuration
 
-To enable tracing in your OpenTelemetry project configure a tracer bean. This bean will be autowired to controllers in your application to create and propagate spans. Also include in this configuration your log exporter. An example of this is shown below: 
+To enable tracing in your OpenTelemetry project configure a tracer bean. This bean will be autowired to controllers in your application to create and propagate spans. If you plan to use a trace exporter remember to include it in this configuration file. A sample OpenTelemetry configuration using LogExporter is shown below: 
 
 
 ```java
@@ -124,7 +126,7 @@ public class OtelConfig {
 }
 ```
 
-The file above configures an OpenTelemetry tracer and a span processor to the OpenTelemetrySdk to export logs. The LoggingExporter will log spans, annotations and events to console, giving more visibility. In a similar fashion, one could add another exporter such as a JaegerExporter to visualize traces on different back-ends. Similar to how the LogExporter is configured above the Jaeger configuration can be added to the OtelConfig class. 
+The file above configures an OpenTelemetry tracer and a span processor which exports traces. The LoggingExporter will log spans, annotations and events to console, providing more visibility to your application. In a similar fashion, one could add another exporter such as a JaegerExporter to visualize traces on different back-ends. Similar to how the LogExporter is configured, a Jaeger configuration can be added to the OtelConfig class. 
 
 Sample configuration for a JaegerExporter:
 
@@ -139,7 +141,7 @@ SpanProcessor jaegerProcessor = SimpleSpansProcessor.newBuilder(JaegerGrpcSpanEx
 OpenTelemetrySdk.getTracerFactory().addSpanProcessor(jaegerProcessor);
 ```
 
-Adding this Jaeger configuration to the OtelConfig.java file above will enable you to view your traces on the Jaeger UI. Details on running Jaeger are shown below. 
+Adding this Jaeger configuration to the OtelConfig.java file will enable you to view your traces on the Jaeger UI. 
 
      
 ### Project Background
