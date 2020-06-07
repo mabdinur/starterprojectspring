@@ -28,7 +28,7 @@ compile "io.opentelemetry:opentelemetry-contrib-spring:VERSION"
 
 ## Features (IN PROGRESS)
 
-Examples show casing the features below can be found in tutorial 3. 
+Examples and detailed explainations of the features below can be found in tutorial 3. 
 
 ### @ConfigTracer
 
