@@ -369,7 +369,7 @@ public class SecondServiceController {
 
 Create a ControllerTraceInterceptor class to wrap the SecondServiceController in a span. This class will call the preHandle method before the rest controller is entered and the postHandle method after. The preHandle method creates a span for the request and the postHandle method closes the span and adds the span context to the response header. This implementation is shown below:  
 
-```
+```java
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -440,7 +440,7 @@ public class ControllerTraceInterceptor implements HandlerInterceptor {
 The final step is to register the ControllerTraceInterceptor in your application:
 
 
-```
+```java
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
@@ -465,7 +465,7 @@ Now your SecondService application is complete. Create the FirstService applicat
 
 Create a rest controller for FirstService. This controller will a request to SecondService and then return the response to the client:
 
-```
+```java
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
@@ -510,7 +510,7 @@ To propagate the span context from FirstService to SecondService you must inject
 
 Implement ClientHttpRequestInterceptor:
 
-```
+```java
 import java.io.IOException;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -558,7 +558,7 @@ public class RestTemplateHeaderModifierInterceptor implements ClientHttpRequestI
 
 Register restTemplateHeaderModifierInterceptor:
 
-```
+```java
 import java.util.ArrayList;
 import java.util.List;
 
@@ -692,20 +692,48 @@ This annotation will use this method:
 
 The default tracer name will be the the name of the main class.
  
-### Create @TraceMethod and @TraceClass annotations 
+### @TraceMethod  
 
-These annotation with allow you to wrap methods or classes in a span. You can configure whether to include the name of methods in the span or log the method call as an event. 
+This annotation with allow you to wrap methods in a span or event.
+
+
+```java
+@TraceMethod
+@GetMapping
+public String callSecondTracedMethod() {
+return "It's time to get a watch";
+}
+```
 
 @TraceMethod fields: 
 - String: name
 - Boolean: isEvent (if true, creates event using method signature and adds it to a span)
+
+
+### @TraceClass 
+ 
+This annotation wraps calls to a class of public methods in a span. You can configure whether to include the name of methods in the span or log the method call as an event. 
+
+Example Usage:
+
+```java
+@TraceClass 
+@RestController
+public class SecondServiceController {
+
+    @GetMapping
+    public String callSecondTracedMethod() {
+    return "It's time to get a watch";
+    }
+}
+```
 
 @TraceClass fields: 
 - String: name
 - Boolean: includeMethodName (logs method signature)
 
 
-### Create @TraceRestControllers
+### @TraceRestControllers
 
 This annotation also contains the @ConfigTracer functionality. This annotation wraps all RestControllers in a span using HandlerInterceptors. It also creates new span for every request and sets name to HTTPMethod + url. If the field logMethodCall is set to true the event named `controllerName + methodName`, is added to the span. 
 
@@ -728,7 +756,7 @@ public class SecondServiceApplication {
 Boolean: methodIsLogged  
 
 
-### Create @TraceHibernateDatabaseCalls
+### @TraceHibernateDatabaseCalls
 
 This annotation has similar functionality to @TracedMethod. When placed on a method or class with database calls using a Hibernate database, this will wrap that database call in a span. This span logs the status of the executed transaction as a span event.
 
@@ -750,13 +778,25 @@ String: name
 Boolean: statusIsLogged (default false) 
 
 
-### Create @TraceRestTemplate
+### @TraceRestTemplate
 
-This annotation supports the Spring RestTemplate Frame. It injects the current span context into requests to external services. If a span doesn't exist it creates one using the name field. If the name is null the default name is the http method of the request + url.
+This annotation supports the Spring RestTemplate framework. It injects the current span context into requests to external services. If a span doesn't exist it creates one using the name field. If the name is null the default name is the http method of the request + url.
 
 
 The core of the proposed functionality can be seen in tutorial 2 in the SecondService.
 
+Example Usage:
+
+```java
+@TraceRestTemplate 
+@SpringBootApplication
+public class SecondServiceApplication {
+
+	public static void main(String[] args) throws IOException {
+		SpringApplication.run(SecondServiceApplication.class, args);
+	}
+}
+```
 
 @TraceRestTemplate fields: 
 - String: name
@@ -770,9 +810,12 @@ Open Tracing has library instrumentation for injecting and extracting the span c
 
 [ava-web-servlet-filter](https://github.com/opentracing-contrib/java-web-servlet-filter)  (inject)
 
-[java-okhttp] (https://github.com/opentracing-contrib/java-okhttp) (extract)
+[java-okhttp](https://github.com/opentracing-contrib/java-okhttp) (extract)
+
 [java-apache-httpclient](https://github.com/opentracing-contrib/java-apache-httpclient) (extract)
+
 [java-asynchttpclient](https://github.com/opentracing-contrib/java-asynchttpclient)
+
 [Spring’s RestTemplate](https://github.com/opentracing-contrib/java-spring-web/tree/master/opentracing-spring-web) (extract)
 
 
