@@ -1,6 +1,6 @@
-# Manual Instrumentation Starter Guide: Spring and SpringBoot
+# Instrumentation Starter Guide: Spring and SpringBoot
 
-This package streamlines the manual instrumentation process in OpenTelemetry for Spring and SpringBoot. It will enable you to add traces to requests, and database calls with minimal changes to application code. This package will not fully automate your Open Telemetry instrumentation, instead it will provide you with better tools to instrument your own code.
+This package streamlines the manual instrumentation process in OpenTelemetry for Spring and SpringBoot. It will enable you to add traces to requests, and database calls with minimal changes to application code. This package will not fully automate your OpenTelemetry instrumentation, instead it will provide you with better tools to instrument your own code.
 This contribution for OpenTelemetry will follow in the footsteps of the existing Spring integration in [OpenCensus](https://github.com/census-instrumentation/opencensus-java/tree/master/contrib/spring/src/main/java/io/opencensus/contrib/spring).
 
 This starter guide contains 3 tutorials. The first tutorial will walk you through span creation and propagation using the JavaSDK and RestTemplate. 
@@ -147,7 +147,7 @@ Adding this Jaeger configuration to the OtelConfig.java file will enable you to 
 ### Project Background
 
 Here we will create rest controllers for FirstService and SecondService.
-FirstService will send a GET request to SecondService to get the current time. First Service will return SecondSerivce's time with a fun little message. 
+FirstService will send a GET request to SecondService to get the current time. FirstService will return SecondSerivce's time and it will append a message. 
 
 
 ### Tutorial  1: Manual Instrumentation with Java SDK
@@ -155,7 +155,7 @@ FirstService will send a GET request to SecondService to get the current time. F
 #### Setup FirstService spring project:
 
 1. Add OpenTelemetry Dependencies
-2. Add OpenTelemetry Configuration
+2. Add OpenTelemetry Tracer Configuration
 3. Add SpringBoot main class 
 4. Create a RestController for FirstService
 5. Start a span to wrap the FirstServiceController
@@ -647,16 +647,14 @@ Expect response:
 ]
 ```
 
-Trace: 
-
-![Alt text](https://screenshot.googleplex.com/xi7hzNAukHv.png)
-
 Note: This data is read from a json file. Ingredient data is stored in [FoodVendor](foodvendor/src/main/resources/vendors.json) and vendors data is stored in [FoodSupplier](foodsupplier/src/main/resources/suppliers.json).
  
 
 ## Tutorial 3: OpenTelemetry using the Spring Contribution (IN PROGRESS) 
 
 ### Create new spring contrib package for Open Telemetry  
+
+This add the opentelemetry-contrib-spring package to use the annotations below:
 
 ```xml
  <dependency>
@@ -665,12 +663,11 @@ Note: This data is read from a json file. Ingredient data is stored in [FoodVend
     <version>VERSION</version>
  </dependency>
 ```
- 
-This new dependency can be added to string applications adopting OpenTelemetry to leverage the newly proposed manual instrumentation tools.
- 
-### Add @ConfigTracer
 
-To use the annotations below you must place this annotation on the the main class of the project. This will create a tracer bean which can be autowired to your controllers.  
+ 
+### @ConfigTracer
+
+To use the other annotations below you must place @ConfigTracer on the main class of the project. This will create a tracer bean which can be injected into your components.  
 
 @ConfigTracer Fields:
 - String: tracerName
@@ -709,12 +706,12 @@ return "It's time to get a watch";
 
 @TraceMethod fields: 
 - String: name
-- Boolean: isEvent (if true, creates event using method signature and adds it to a span)
+- Boolean: isEvent 
 
 
 ### @TraceClass 
  
-This annotation wraps calls to a class of public methods in a span. You can configure whether to include the name of methods in the span or log the method call as an event. 
+This annotation wraps all methods in a class in a span. You can configure whether to include the name of methods in the span or whether to log the method call as an event. 
 
 Example Usage:
 
@@ -737,7 +734,7 @@ public class SecondServiceController {
 
 ### @TraceRestControllers
 
-This annotation also contains the @ConfigTracer functionality. This annotation wraps all RestControllers in a span using HandlerInterceptors. It also creates new span for every request and sets name to HTTPMethod + url. If the field logMethodCall is set to true the event named `controllerName + methodName`, is added to the span. 
+This annotation also contains the @ConfigTracer functionality. This annotation wraps all RestControllers in a span. It also creates new span for every request and sets name to HTTPMethod + url. If the field logMethodCall is set to true the event named `controllerName + methodName`, is added to the span. 
 
 
 Example Usage:
@@ -756,29 +753,6 @@ public class SecondServiceApplication {
 @TraceRestControllers fields: 
 - Fields:
 Boolean: methodIsLogged  
-
-
-### @TraceHibernateDatabaseCalls
-
-This annotation has similar functionality to @TracedMethod. When placed on a method or class with database calls using a Hibernate database, this will wrap that database call in a span. This span logs the status of the executed transaction as a span event.
-
-Example usage:
-
-```java
-@TraceDatabase(name="traceName") 
-public static getRecordFromDb(String sqlStatement) throws Exception {
-        Class.forName("com.mysql.cj.jdbc.Driver");
-        Connection con = DriverManager.getConnection("jdbc:mysql://db.com:3306/core","username","password");
-        Statement stmt = con.createStatement();
-        stmt.execute(sqlStatement);
-}
-```
-
-@TraceDatabase fields: 
-- Fields:
-String: name
-Boolean: statusIsLogged (default false) 
-
 
 ### @TraceRestTemplate
 
@@ -803,10 +777,31 @@ public class SecondServiceApplication {
 @TraceRestTemplate fields: 
 - String: name
 
+### @TraceHibernateDatabaseCalls
+
+This annotation has similar functionality to @TracedMethod. When placed on a method or class with database calls using a Hibernate database, this will wrap that database call in a span. This span logs the status of the executed transaction as a span event.
+
+Example usage:
+
+```java
+@TraceDatabase(name="traceName") 
+public static getRecordFromDb(String sqlStatement) throws Exception {
+        Class.forName("com.mysql.cj.jdbc.Driver");
+        Connection con = DriverManager.getConnection("jdbc:mysql://db.com:3306/core","username","password");
+        Statement stmt = con.createStatement();
+        stmt.execute(sqlStatement);
+}
+```
+
+@TraceDatabase fields: 
+- Fields:
+String: name
+Boolean: statusIsLogged (default false) 
+
 
 ### Alternative to @TraceRestTemplate (Note to self and other contributors)
 
-One challenge to improving user experience is context propagation. As of now OpenTelemetry does not support popular web clients such as gRPC, Spring's RestTemplate or Apache Http Client. The only documentation I can find on context propagation involves manually injecting a span context into a request header. I used this approach in an example in the helper method HttpUtils.call_endpoint to propagate the span context from FirstService to SecondService. In my proposed @TraceRestTemplate annotation I will provide this functionality to users. However it will only support one framework in a limited fashion.
+One challenge to improving user experience is context propagation. As of now OpenTelemetry does not support popular web clients such as gRPC, RestTemplate or Apache Http Client. The only documentation I can find on context propagation using spring involves manually injecting a span context into a request header. In my proposed @TraceRestTemplate annotation I will provide this functionality to users. However it will only support one framework and in a limited fashion.
 
 Open Tracing has library instrumentation for injecting and extracting the span context into a payload as can be seen below:
 
