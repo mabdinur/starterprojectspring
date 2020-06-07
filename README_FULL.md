@@ -1,4 +1,4 @@
-# Instrumentation Starter Guide: Spring and SpringBoot
+#OpenTelemetry Instrumentation: Spring and SpringBoot
 
 This package streamlines the manual instrumentation process in OpenTelemetry for Spring and SpringBoot. It will enable you to add traces to requests, and database calls with minimal changes to application code. This package will not fully automate your OpenTelemetry instrumentation, instead it will provide you with better tools to instrument your own code.
 This contribution for OpenTelemetry will follow in the footsteps of the existing Spring integration in [OpenCensus](https://github.com/census-instrumentation/opencensus-java/tree/master/contrib/spring/src/main/java/io/opencensus/contrib/spring).
@@ -26,8 +26,61 @@ To use the tools included in this package include the dependency below in your s
 compile "io.opentelemetry:opentelemetry-contrib-spring:VERSION"
 ```
 
+## Features (IN PROGRESS)
 
-## Tutorial 1:  Manual Instrumentation with Java SDK
+Examples show casing the features below can be found in tutorial 3. 
+
+### @ConfigTracer
+
+Initializes a global tracer for your application which can be injected as a spring dependency.
+
+@ConfigTracer fields:
+- String: tracerName
+ 
+### @TraceMethod  
+
+Wraps a method in a span or logs it as an event
+
+@TraceMethod fields: 
+- String: name
+- Boolean: isEvent 
+
+
+### @TraceClass 
+
+Wraps all public methods in a span or logs it as an event
+
+@TraceClass fields: 
+- String: name
+- Boolean: isEvent
+- Boolean: includeMethodName (logs method signature)
+
+
+### @TraceRestControllers
+
+Creates a new span for rest controllers when a request is received. 
+
+No @TraceRestControllers fields: 
+- Default span name: controllerClassName
+
+
+### @InjectTraceRestTemplate
+
+Inject span context to all requests using RestTemplate
+
+@InjectTraceRestTemplate fields: 
+- Boolean: isEventLogged (default true) 
+
+### @TraceHibernateDatabase
+
+Wraps all database calls using the Hibernate framework in a span or logs it as an event
+
+@TraceHibernateDatabase fields: 
+- String: name
+- Boolean: isEvent 
+
+
+# Manual Instrumentation starter guide
 
 A sample user journey for manual instrumentation can be found on [lightstep](https://docs.lightstep.com/otel/getting-started-java-springboot). In this example we will create two spring web services using SpringBoot. Then we will trace the requests between these services using OpenTelemetry. Finally, we will discuss improvements that can be made to the process.
 
@@ -669,9 +722,6 @@ This add the opentelemetry-contrib-spring package to use the annotations below:
 
 To use the other annotations below you must place @ConfigTracer on the main class of the project. This will create a tracer bean which can be injected into your components.  
 
-@ConfigTracer Fields:
-- String: tracerName
-
 Example Usage:
 
 ```java
@@ -685,16 +735,12 @@ public class SecondServiceApplication {
 
 }
 ```
-
-This annotation will use this method:
-`OpenTelemetry.getTracerFactory().get("tracerName")`
-
-The default tracer name will be the the name of the main class.
  
 ### @TraceMethod  
 
 This annotation with allow you to wrap methods in a span or event.
 
+Example Usage:
 
 ```java
 @TraceMethod
@@ -703,10 +749,6 @@ public String callSecondTracedMethod() {
 return "It's time to get a watch";
 }
 ```
-
-@TraceMethod fields: 
-- String: name
-- Boolean: isEvent 
 
 
 ### @TraceClass 
@@ -727,11 +769,6 @@ public class SecondServiceController {
 }
 ```
 
-@TraceClass fields: 
-- String: name
-- Boolean: includeMethodName (logs method signature)
-
-
 ### @TraceRestControllers
 
 This annotation also contains the @ConfigTracer functionality. This annotation wraps all RestControllers in a span. It also creates new span for every request and sets name to HTTPMethod + url. If the field logMethodCall is set to true the event named `controllerName + methodName`, is added to the span. 
@@ -750,11 +787,8 @@ public class SecondServiceApplication {
 }
 ```
 
-@TraceRestControllers fields: 
-- Fields:
-Boolean: methodIsLogged  
 
-### @TraceRestTemplate
+### @InjectTraceRestTemplate
 
 This annotation supports the Spring RestTemplate framework. It injects the current span context into requests to external services. If a span doesn't exist it creates one using the name field. If the name is null the default name is the http method of the request + url.
 
@@ -764,7 +798,7 @@ The core of the proposed functionality can be seen in tutorial 2 in the SecondSe
 Example Usage:
 
 ```java
-@TraceRestTemplate 
+@InjectTraceRestTemplate 
 @SpringBootApplication
 public class SecondServiceApplication {
 
@@ -773,9 +807,6 @@ public class SecondServiceApplication {
 	}
 }
 ```
-
-@TraceRestTemplate fields: 
-- String: name
 
 ### @TraceHibernateDatabaseCalls
 
@@ -793,15 +824,10 @@ public static getRecordFromDb(String sqlStatement) throws Exception {
 }
 ```
 
-@TraceDatabase fields: 
-- Fields:
-String: name
-Boolean: statusIsLogged (default false) 
 
+### Alternative to @InjectTraceRestTemplate (Note to self and other contributors)
 
-### Alternative to @TraceRestTemplate (Note to self and other contributors)
-
-One challenge to improving user experience is context propagation. As of now OpenTelemetry does not support popular web clients such as gRPC, RestTemplate or Apache Http Client. The only documentation I can find on context propagation using spring involves manually injecting a span context into a request header. In my proposed @TraceRestTemplate annotation I will provide this functionality to users. However it will only support one framework and in a limited fashion.
+One challenge to improving user experience is context propagation. As of now OpenTelemetry does not support popular web clients such as gRPC, RestTemplate or Apache Http Client. The only documentation I can find on context propagation using spring involves manually injecting a span context into a request header. In my proposed @InjectTraceRestTemplate annotation I will provide this functionality to users. However it will only support one framework and in a limited fashion.
 
 Open Tracing has library instrumentation for injecting and extracting the span context into a payload as can be seen below:
 
@@ -816,6 +842,6 @@ Open Tracing has library instrumentation for injecting and extracting the span c
 [Spring’s RestTemplate](https://github.com/opentracing-contrib/java-spring-web/tree/master/opentracing-spring-web) (extract)
 
 
-Support for one or two of these Web Clients should be added in OpenTelemetry as well. This would improve the user friendliness of span propagation. This approach would make my proposed @TraceRestTemplate obsolete. 
+Support for one or two of these Web Clients should be added in OpenTelemetry as well. This would improve the user friendliness of span propagation. This approach would make my proposed @InjectTraceRestTemplate obsolete. 
 
 I can pick up this work after adding the annotations. Unless someone is already working on this. If so, I can pitch in to help :)
