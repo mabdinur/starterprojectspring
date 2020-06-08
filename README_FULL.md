@@ -1,102 +1,36 @@
-# OpenTelemetry Instrumentation: Spring and SpringBoot
-
-This package streamlines the manual instrumentation process in OpenTelemetry for Spring and SpringBoot. It will enable you to add traces to requests, and database calls with minimal changes to application code. This package will not fully automate your OpenTelemetry instrumentation, instead, it will provide you with better tools to instrument your own code.
-This contribution to OpenTelemetry will follow in the footsteps of the existing Spring integration in[OpenCensus](https://github.com/census-instrumentation/opencensus-java/tree/master/contrib/spring/src/main/java/io/opencensus/contrib/spring).
-
-This starter guide contains three tutorials. The first tutorial will walk you through span creation and propagation using the JavaSDK and the HTTP client RestTemplate. 
-
-The second tutorial will build on the first. It will walk you through implementing spring-web handler and interceptor interfaces to create traces without modifying your application code. 
-
-The third tutorial will walk you through the annotations and configurations defined in the opentelemetry-contrib-spring package. This tutorial will equip you with new tools to streamline the step up and configuration of OpenTelemetry on Spring and SpringBoot applications.
-
-To use the tools included in this package include the dependency below in your spring application:
+# OpenTelemetry Instrumentation: Spring and Spring Boot
+<!-- ReadMe is in progress -->
+<!-- TO DO: Add sections for starter guide -->
 
 
-#### Maven
-```xml
- <dependency>
-    <groupId>io.opentelemetry</groupId>
-    <artifactId>opentelemetry-contrib-spring</artifactId>
-    <version>VERSION</version>
- </dependency>
-```
+This package streamlines the manual instrumentation process in OpenTelemetry for [Spring](https://spring.io/projects/spring-framework) and [Spring Boot](https://spring.io/projects/spring-boot). It will enable you to add traces to requests, and database calls with minimal changes to application code. This package will not fully automate your OpenTelemetry instrumentation, instead, it will provide you with better tools to instrument your own code.
 
-#### Gradle 
-```gradle
-compile "io.opentelemetry:opentelemetry-contrib-spring:VERSION"
-```
+This starter guide contains three sections. In the first two sections you will use the "vanilla" Open Telemetry API. In the third section, we will explore features defined in this package and use these tools to better instrument your application. 
 
-## Features (IN PROGRESS)
+The [first section](#section-1-manual-instrumentation-with-java-sdk) will walk you through span creation and propagation using the JavaSDK and the HTTP web client, RestTemplate. 
 
-Examples and detailed explanations of the features below can be found in tutorial 3. 
+The [second section](#section-2-using-spring-handlers-and-interceptors) will build on the first. It will walk you through implementing spring-web handler and interceptor interfaces to create traces without modifying your application code. 
 
-### @ConfigTracer
-
-This annotation initializes a global tracer for your application. It will create a Tracer Object which can be injected as a dependency.
-
-@ConfigTracer fields:
-- String: tracerName
- 
-### @TraceMethod  
-
-This annotates a method definition. It wraps a method in a span or logs a method call as an event.
-
-@TraceMethod fields: 
-- String: name
-- Boolean: isEvent 
-
-
-### @TraceClass 
-
-This annotates a class definition. It wraps all public methods in a span or logs all method calls as an event.
-
-@TraceClass fields: 
-- String: name
-- Boolean: isEvent
-- Boolean: includeMethodName (logs method signature)
-
-
-### @TraceRestControllers
-
-This annotates a class definition with @RestController annotation. It creates a new span for rest controllers when a request is received. 
-
-No @TraceRestControllers fields: 
-- Default span name: controllerClassName
-
-
-### @InjectTraceRestTemplate
-
-Inject span context to all requests using RestTemplate.
-
-@InjectTraceRestTemplate fields: 
-- Boolean: isEventLogged (default true) 
-
-### @TraceHibernateDatabase
-
-This annotates a hibernate entity. It wraps all database calls using the Hibernate framework in a span or logs it as an event.
-
-@TraceHibernateDatabase fields: 
-- String: name
-- Boolean: isEvent 
+The [third section](#section-3-instrumentation-using-opentelemetry-contrib-spring-in-progress) will walk you through the annotations and configurations defined in the opentelemetry-contrib-spring package. This section will equip you with new tools to streamline the step up and configuration of OpenTelemetry on Spring and Spring Boot applications.
 
 
 # Manual Instrumentation Starter Guide
 
-A sample user journey for manual instrumentation can be found here [lightstep](https://docs.lightstep.com/otel/getting-started-java-springboot). In tutorial one and two, you will create two spring web services using SpringBoot. you will then trace the requests between these services using OpenTelemetry. Finally, you will discuss improvements that can be made to the process. These improvements will be shown in tutorial three.
+A sample user journey for manual instrumentation can be found here [lightstep](https://docs.lightstep.com/otel/getting-started-java-Spring Boot). In section one and two, you will create two spring web services using Spring Boot. you will then trace the requests between these services using OpenTelemetry. Finally, you will discuss improvements that can be made to the process. These improvements will be shown in section three.
 
 
-### Create two Spring Projects
+## Create two Spring Projects
 
-Using this [Spring Initializer](https://start.spring.io/), you will create two spring projects.  Before you download the projects, name one project FirstService and the other SecondService. Make sure to select maven, SpringBoot 2.3, Java, and add the spring-web dependency. After downloading the two projects include the OpenTelemetry dependencies listed below. 
+Using this [Spring Initializer](https://start.spring.io/), you will create two spring projects.  Before you download the projects, name one project FirstService and the other SecondService. Make sure to select maven, Spring Boot 2.3, Java, and add the spring-web dependency. After downloading the two projects include the OpenTelemetry dependencies listed below. 
 
 
-### Setup for FirstService and SecondService
+## Setup for Section 1 and Section 2
 
-Add the dependencies below to enable OpenTelemetry in FirstService and SecondService. The Jaeger and LoggerExporter packages are recommended but not required for this tutorial. 
+Add the dependencies below to enable OpenTelemetry in FirstService and SecondService. The Jaeger and LoggerExporter packages are recommended but not required for this section. 
 
-#### Maven
+### Maven
  
-##### OpenTelemetry
+#### OpenTelemetry
 ```xml
 <dependency>
 	<groupId>io.opentelemetry</groupId>
@@ -110,7 +44,7 @@ Add the dependencies below to enable OpenTelemetry in FirstService and SecondSer
 </dependency>	
 ```
 
-##### LoggerExporter
+#### LoggerExporter
 ```xml
 <dependency>
 	<groupId>io.opentelemetry</groupId>
@@ -199,13 +133,13 @@ Here you will create rest controllers for FirstService and SecondService.
 FirstService will send a GET request to SecondService to get the current time. FirstService will return SecondSerivce's time and it will append a message. 
 
 
-### Tutorial  1: Manual Instrumentation with Java SDK
+## Section 1: Manual Instrumentation with Java SDK
 
-#### Setup FirstService spring project:
+### Setup FirstService:
 
 1. Ensure OpenTelemetry dependencies are included
 2. Ensure an OpenTelemetry Tracer is configured
-3. Ensure a SpringBoot main class was created by the Spring initializer
+3. Ensure a Spring Boot main class was created by the Spring initializer
 4. Create a RestController for FirstService
 5. Start a span to wrap the FirstServiceController
 6. Configure HttpUtils.callEndpoint to inject span context into request. This is key to propagate the trace to the SecondService
@@ -316,11 +250,11 @@ public class HttpUtils {
 }
 ```
 
-#### Setup SecondService spring project:
+### Setup SecondService:
 
 1. Ensure OpenTelemetry dependencies are included
 2. Ensure an OpenTelemetry Tracer is configured
-3. Ensure a SpringBoot main class was created by the Spring initializer
+3. Ensure a Spring Boot main class was created by the Spring initializer
 4. Create a RestController for SecondService
 5. Start a span to wrap the SecondServiceController
   
@@ -372,7 +306,7 @@ public class SecondServiceController {
 }
 ```
 
-#### Run FirstService and SecondService:
+### Run FirstService and SecondService:
 
 ***Ensure either LogExporter or Jaeger is configured in the OtelConfig.java file. For LogExporter you can view traces on your console.*** 
 
@@ -385,15 +319,15 @@ Run FirstService and SecondService from command line or using an IDE. The end po
 
 After running Jaeger locally, refresh the UI and view the exported traces from the two web services. Congrats, you created a distributed service with OpenTelemetry!
 
-### Tutorial  2: Using Spring Handlers and Interceptors
+## Section 2: Using Spring Handlers and Interceptors
 
 
-Using Tutorial 1, create the FirstService and SecondService projects.  Add the required OpenTelemetry dependencies, configurations, and your chosen exporter to both projects. In this tutorial, you will implement the Spring HandlerInerceptor interface to wrap all requests to FirstService and Second Service controllers in a span. 
+Using section 1, create the FirstService and SecondService projects.  Add the required OpenTelemetry dependencies, configurations, and your chosen exporter to both projects. In this section, you will implement the Spring HandlerInerceptor interface to wrap all requests to FirstService and Second Service controllers in a span. 
 
 You will also use the RestTemplate HTTP client to send requests from FirstService to SecondService. To propagate the trace in this request you will also implement the ClientHttpRequestInterceptor interface. This implementation is only required for FirstService since this will be the only project that sends outbound requests (SecondService only receive requests from an external service). 
 
 
-#### Setup SecondService spring project:
+### Setup SecondService:
 
 Create a rest controller for SecondService. This controller will return a string to the FirstService:
 
@@ -516,7 +450,7 @@ public class InterceptorConfig extends WebMvcConfigurationSupport {
 
 Now your SecondService application is complete. Create the FirstService application using the instructions below and then run your distributed service!
 
-#### Setup the FirstService spring project:
+### Setup FirstService:
 
 Create a rest controller for FirstService. This controller will send a request to SecondService and then return the response to the client:
 
@@ -562,7 +496,7 @@ As seen in the setup of SecondService, create implement the TraceInterceptor int
 
 Next, you will configure the ClientHttpRequestInterceptor to intercept all client HTTP requests made using RestTemplate.
 
-To propagate the span context from FirstService to SecondService you must inject the span context into the outgoing request. In tutorial 1 this was done within the FirstServiceController using HttpUtils. In this tutorial, you will implement the ClientHttpRequestInterceptor and register this interceptor in our application. 
+To propagate the span context from FirstService to SecondService you must inject the span context into the outgoing request. In section 1 this was done within the FirstServiceController using HttpUtils. In this section, you will implement the ClientHttpRequestInterceptor and register this interceptor in our application. 
 
 Include the two classes below to your FirstService application to add this functionality:
 
@@ -646,19 +580,19 @@ public class RestClientConfig {
 }
 ```
 
-#### Create a distributed trace 
+### Create a distributed trace 
 
-By default SpringBoot runs a Tomcat on the port 8080. This tutorial assumes FirstService runs on the default port (8080) and SecondService runs on port 8081. This is because of the SS_URL hard coded in FirstService and the test urls given below. To run SecondService on port 8081 include `server.port=8081` in the resources/application.properties file. 
+By default Spring Boot runs a Tomcat on the port 8080. This section assumes FirstService runs on the default port (8080) and SecondService runs on port 8081. This is because of the SS_URL hard coded in FirstService and the test urls given below. To run SecondService on port 8081 include `server.port=8081` in the resources/application.properties file. 
 
 Run both the FirstService and SecondService projects on localhost. The end point for FirstService should be http://localhost:8080/message and http://localhost:8081/time for SecondService. 
 
 Enter `http:\\localhost:8080/time` in a browser to create a distributed trace. This trace should include a span for FirstService and a span for SecondService.
 
-To visualize this trace add a trace exporter to one or both of your applications. Instructions on how to setup LogExporter and Jaeger can be seen in tutorial 1. You can also follow your trace using a debugger and tracking the request headers. 
+To visualize this trace add a trace exporter to one or both of your applications. Instructions on how to setup LogExporter and Jaeger can be seen in section 1. You can also follow your trace using a debugger and tracking the request headers. 
 
-### Sample application with distributed tracing: otel-example 
+## Sample application with distributed tracing: otel-example 
 
-In the otel-example/ directory you can find 3 services (FoodFinder, FoodSupplier, and FoodVendor) which create a distrubted trace using tutorial 2. In this example FoodFinder queries FoodSupplier for a list of vendors which carry an ingredient and then queries FoodVendor to retrieve a list of ingredient prices, quantity, and their corresponding vendor. 
+In the otel-example/ directory you can find 3 services (FoodFinder, FoodSupplier, and FoodVendor) which create a distrubted trace using section 2. In this example FoodFinder queries FoodSupplier for a list of vendors which carry an ingredient and then queries FoodVendor to retrieve a list of ingredient prices, quantity, and their corresponding vendor. 
 
 FirstService is configured to run on port 8080, FoodSupplier on 8081, and FoodVendor on 8082. You can download and run the three services.  
 
@@ -700,12 +634,13 @@ Expect response:
 Note: This data is read from a json file. Ingredient data is stored in [FoodVendor](foodvendor/src/main/resources/vendors.json) and vendors data is stored in [FoodSupplier](foodsupplier/src/main/resources/suppliers.json).
  
 
-## Tutorial 3: Instrumentation using opentelemetry-contrib-spring (IN PROGRESS) 
+## Section 3: Instrumentation using opentelemetry-contrib-spring (IN PROGRESS) 
 
-### Create new spring contrib package for Open Telemetry  
+### Dependencies
 
-This add the opentelemetry-contrib-spring package to use the annotations below:
+The dependencies below are required to use these [features](#features-in-progress) but are not required to use the "vanilla" OpenTelementry API. Examples illustrating their use can be found in [here](#example-usage). 
 
+#### Maven
 ```xml
  <dependency>
     <groupId>io.opentelemetry</groupId>
@@ -714,12 +649,67 @@ This add the opentelemetry-contrib-spring package to use the annotations below:
  </dependency>
 ```
 
+#### Gradle 
+```gradle
+compile "io.opentelemetry:opentelemetry-contrib-spring:VERSION"
+```
+
+### Features (IN PROGRESS)
+
+#### @ConfigTracer
+
+This annotation initializes a global tracer for your application. It will create a Tracer Object which can be injected as a dependency.
+
+@ConfigTracer fields:
+- String: tracerName
+
+#### @TraceMethod  
+
+This annotates a method definition. It wraps a method in a span or logs a method call as an event.
+
+@TraceMethod fields: 
+- String: name
+- Boolean: isEvent 
+
+
+#### @TraceClass 
+
+This annotates a class definition. It wraps all public methods in a span or logs all method calls as an event.
+
+@TraceClass fields: 
+- String: name
+- Boolean: isEvent
+- Boolean: includeMethodName (logs method signature)
+
+
+#### @TraceRestControllers
+
+This annotates a class definition with @RestController annotation. It creates a new span for rest controllers when a request is received. 
+
+No @TraceRestControllers fields: 
+- Default span name: controllerClassName
+
+
+#### @InjectTraceRestTemplate
+
+Inject span context to all requests using RestTemplate.
+
+@InjectTraceRestTemplate fields: 
+- Boolean: isEventLogged (default true) 
+
+#### @TraceHibernateDatabase
+
+This annotates a hibernate entity. It wraps all database calls using the Hibernate framework in a span or logs it as an event.
+
+@TraceHibernateDatabase fields: 
+- String: name
+- Boolean: isEvent 
+
+
+### Example Usage
+
  
-### Add @ConfigTracer
-
-To use the other annotations below you must place @ConfigTracer on the main class of the project. This will create a tracer bean which can be injected into your components.
-
-Example Usage:
+#### @ConfigTracer
 
 ```java
 @ConfigTracer(name="tracerName")
@@ -733,11 +723,8 @@ public class SecondServiceApplication {
 }
 ```
  
-### @TraceMethod  
+#### @TraceMethod  
 
-This annotation with allow you to wrap methods in a span or event.
-
-Example Usage:
 
 ```java
 @TraceMethod(name="methodName", isEvent=False)
@@ -748,11 +735,8 @@ return "It's time to get a watch";
 ```
 
 
-### @TraceClass 
+#### Add @TraceClass 
  
-This annotation wraps all methods in a class in a span. You can configure whether to include the name of methods in the span or whether to log the method call as an event. 
-
-Example Usage:
 
 ```java
 @TraceClass(name="className", isEvent=True)
@@ -766,12 +750,8 @@ public class SecondServiceController {
 }
 ```
 
-### @TraceRestControllers
+#### @TraceRestControllers
 
-This annotation also contains the @ConfigTracer functionality. This annotation wraps all RestControllers in a span. It also creates new span for every request and sets name to HTTPMethod + url. If the field logMethodCall is set to true the event named `controllerName + methodName`, is added to the span. 
-
-
-Example Usage:
 
 ```java
 @TraceRestControllers 
@@ -785,14 +765,8 @@ public class SecondServiceApplication {
 ```
 
 
-### @InjectTraceRestTemplate
+#### @InjectTraceRestTemplate
 
-This annotation supports the Spring RestTemplate framework. It injects the current span context into requests to external services. If a span doesn't exist it creates one using the name field. If the name is null the default name is the http method of the request + url.
-
-
-The core of the proposed functionality can be seen in tutorial 2 in the SecondService.
-
-Example Usage:
 
 ```java
 @InjectTraceRestTemplate 
@@ -805,11 +779,7 @@ public class SecondServiceApplication {
 }
 ```
 
-### @TraceHibernateDatabaseCalls
-
-This annotation has similar functionality to @TracedMethod. When placed on a method or class with database calls using a Hibernate database, this will wrap that database call in a span. This span logs the status of the executed transaction as a span event.
-
-Example usage:
+#### @TraceHibernateDatabaseCalls
 
 ```java
 @TraceDatabase(name="entityName") 
