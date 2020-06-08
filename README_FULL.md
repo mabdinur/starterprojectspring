@@ -82,12 +82,12 @@ This annotates a hibernate entity. It wraps all database calls using the Hiberna
 
 # Manual Instrumentation Starter Guide
 
-A sample user journey for manual instrumentation can be found on [lightstep](https://docs.lightstep.com/otel/getting-started-java-springboot). In this example we will create two spring web services using SpringBoot. Then we will trace the requests between these services using OpenTelemetry. Finally, we will discuss improvements that can be made to the process.
+A sample user journey for manual instrumentation can be found here [lightstep](https://docs.lightstep.com/otel/getting-started-java-springboot). In tutorial one and two, we will create two spring web services using SpringBoot. We will then trace the requests between these services using OpenTelemetry. Finally, we will discuss improvements that can be made to the process. These improvements will be shown in tutorial three.
 
 
 ### Create two Spring Projects
 
-Using https://start.spring.io/ create two spring projects. Select maven, SpringBoot 2.3, Java, and add the spring-web dependency. Name one project FirstService and the other SecondService. After downloading the two projects make sure to include the OpenTelemetry dependencies listed below. 
+Using this [Spring Initializer](https://start.spring.io/), you will create two spring projects.  Before you download the projects, name one project FirstService and the other SecondService. Make sure to select maven, SpringBoot 2.3, Java, and add the spring-web dependency. After downloading the two projects include the OpenTelemetry dependencies listed below. 
 
 
 ### Setup for FirstService and SecondService
@@ -137,8 +137,6 @@ Add the dependencies below to enable OpenTelemetry in FirstService and SecondSer
 	<version>1.27.2</version>
 </dependency>
 ```
-
-***Note: The packages opentelemetry-exporters-logging and opentelemetry-exporters-jaeger are used to export logs. If you plan to to use a different  exporter include those packages instead***
  
 
 ### Tracer Configuration
@@ -179,7 +177,8 @@ public class OtelConfig {
 }
 ```
 
-The file above configures an OpenTelemetry tracer and a span processor which exports traces. The LoggingExporter will log spans, annotations and events to console, providing more visibility to your application. In a similar fashion, one could add another exporter such as a JaegerExporter to visualize traces on different back-ends. Similar to how the LogExporter is configured, a Jaeger configuration can be added to the OtelConfig class. 
+
+The file above configures an OpenTelemetry tracer and a span processor which exports traces. The LoggingExporter will log spans, annotations, and events to console, providing more visibility to your application. Similarly, one could add another exporter, such as JaegerExporter, to visualize traces on different back-ends. Similar to how the LogExporter is configured, a Jaeger configuration can be added to the OtelConfig class above. 
 
 Sample configuration for a JaegerExporter:
 
@@ -193,9 +192,6 @@ SpanProcessor jaegerProcessor = SimpleSpansProcessor.newBuilder(JaegerGrpcSpanEx
 	.build();
 OpenTelemetrySdk.getTracerFactory().addSpanProcessor(jaegerProcessor);
 ```
-
-Adding this Jaeger configuration to the OtelConfig.java file will enable you to view your traces on the Jaeger UI. 
-
      
 ### Project Background
 
@@ -207,9 +203,9 @@ FirstService will send a GET request to SecondService to get the current time. F
 
 #### Setup FirstService spring project:
 
-1. Add OpenTelemetry Dependencies
-2. Add OpenTelemetry Tracer Configuration
-3. Add SpringBoot main class 
+1. Ensure OpenTelemetry dependencies are included
+2. Ensure an OpenTelemetry Tracer is configured
+3. Ensure a SpringBoot main class was created by the Spring initializer
 4. Create a RestController for FirstService
 5. Start a span to wrap the FirstServiceController
 6. Configure HttpUtils.callEndpoint to inject span context into request. This is key to propagate the trace to the SecondService
@@ -268,7 +264,7 @@ public class FirstServiceController {
 }
 ```
 
-HttpUtils is a helper class which injects the span context into request headers. For this example I used Spring's RestTemplate to send requests from FirstService and SecondService. A similar approach can be used with popular Java Web Clients such as okhttp and apache http client. The key is to override the put method in HttpTextFormat.Setter<?> to handle your request format. HttpTextFormat.inject will use this setter to set the traceparent and tracestate fields in your request. These values will be used to propagate your span context to external services.
+HttpUtils is a helper class that injects the current span context into request headers. This involves adding the parent trace id and the trace-state to the request header. For this example, I used RestTemplate to send requests from FirstService to SecondService. A similar approach can be used with popular Java Web Clients such as okhttp and apache http client. The key is this implementation is to override the put method in HttpTextFormat.Setter<?> to handle your request format. HttpTextFormat.inject will use this setter to set the traceparent and tracestate fields in your request. These values will be used to propagate your span context to external services.
 
 
 ```java
@@ -322,13 +318,11 @@ public class HttpUtils {
 
 #### Setup SecondService spring project:
 
-1. Add OpenTelemetry Dependencies
-2. Add OpenTelemetry Configuration
-3. Add SpringBoot main class 
+1. Ensure OpenTelemetry dependencies are included
+2. Ensure an OpenTelemetry Tracer is configured
+3. Ensure a SpringBoot main class was created by the Spring initializer
 4. Create a RestController for SecondService
 5. Start a span to wrap the SecondServiceController
-
-**Note: The default port for the Apache Tomcat is 8080. On localhost both FirstService and SecondService services will attempt to run on this port raising an error. To avoid this add `server.port=8081` to the application.properties in the Springboot resource directory. Ensure the port used corresponds to port referenced by FirstServiceController.SS_URL. **
   
 
 ```java
@@ -380,12 +374,14 @@ public class SecondServiceController {
 
 #### Run FirstService and SecondService:
 
-***Ensure either LogExporter or Jaeger is configured in the OtelConfig.java file and is running*** 
- 
-Run FirstService and SecondService from command line or using an IDE (ex. Eclipse). The end point for FirstService should be localhost:8080/message and for SecondService, localhost:8081/time. Entering `localhost:8080/time` in a browser should call FirstService and then SecondService, creating a trace.
- 
-To view traces on the Jaeger UI add the Jaeger Exporter to both FirstService and SecondService projects. Deploy the Jaeger Exporter on localhost by runnning the command `docker run --rm -it --network=host jaegertracing/all-in-one` in terminal. Then send a sample request to the FirstService service. 
+***Ensure either LogExporter or Jaeger is configured in the OtelConfig.java file. For LogExporter you can view traces on your console.*** 
 
+To view traces on the Jaeger UI, deploy the Jaeger Exporter on localhost by runnning the command `docker run --rm -it --network=host jaegertracing/all-in-one` in terminal. Then send a sample request to the FirstService service. 
+
+**Note: The default port for the Apache Tomcat is 8080. On localhost both FirstService and SecondService services will attempt to run on this port raising an error. To avoid this add `server.port=8081` to the resources/application.properties file. Ensure the port specified corresponds to port referenced by FirstServiceController.SS_URL. **
+ 
+Run FirstService and SecondService from command line or using an IDE. The end point of for FirstService should be localhost:8080/message and  localhost:8081/time for SecondService. Entering `localhost:8080/time` in a browser should call FirstService and then SecondService, creating a trace.
+ 
 
 After running Jaeger locally, refresh the UI and view the exported traces from the two web services. Congrats, you created a distributed service with OpenTelemetry!
 
