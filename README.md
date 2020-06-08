@@ -1,5 +1,3 @@
-# OpenTelemetry Instrumentation: Spring and SpringBoot
-
 This package streamlines the manual instrumentation process in OpenTelemetry for Spring and SpringBoot. It will enable you to add traces to requests, and database calls with minimal changes to application code. This package will not fully automate your OpenTelemetry instrumentation, instead, it will provide you with better tools to instrument your own code.
 This contribution to OpenTelemetry will follow in the footsteps of the existing Spring integration in[OpenCensus](https://github.com/census-instrumentation/opencensus-java/tree/master/contrib/spring/src/main/java/io/opencensus/contrib/spring).
 
@@ -78,4 +76,3 @@ This annotates a hibernate entity. It wraps all database calls using the Hiberna
 @TraceHibernateDatabase fields: 
 - String: name
 - Boolean: isEvent 
-
