@@ -2,7 +2,6 @@
 <!-- ReadMe is in progress -->
 <!-- TO DO: Add sections for starter guide -->
 
-
 This package streamlines the manual instrumentation process of OpenTelemetry for [Spring](https://spring.io/projects/spring-framework) and [Spring Boot](https://spring.io/projects/spring-boot) applications. It will enable you to add traces to requests and database calls with minimal changes to application code. This package will not fully automate your OpenTelemetry instrumentation, instead, it will provide you with better tools to instrument your own code. 
 
 The [first section](#section-1-manual-instrumentation-with-java-sdk) will walk you through span creation and propagation using the OpenTelemetry Java API and [Spring's RestTemplate Http Web Client](https://spring.io/guides/gs/consuming-rest/). This approach will use the "vanilla" OpenTelemetry API to make explicit tracing calls within an application's controller. 
@@ -15,11 +14,9 @@ The [third section](#section-3-instrumentation-using-opentelemetry-contrib-sprin
 
 A sample user journey for manual instrumentation can be found here [lightstep](https://docs.lightstep.com/otel/getting-started-java-SpringBoot). In section one and two, you will create two spring web services using Spring Boot. you will then trace the requests between these services using OpenTelemetry. Finally, you will discuss improvements that can be made to the process. These improvements will be shown in section three.
 
-
 ## Create two Spring Projects
 
 Using this [Spring Initializer](https://start.spring.io/), you will create two spring projects.  Before you download the projects, name one project FirstService and the other SecondService. Make sure to select maven, Spring Boot 2.3, Java, and add the spring-web dependency. After downloading the two projects include the OpenTelemetry dependencies listed below. 
-
 
 ## Setup for Section 1 and Section 2
 
@@ -68,7 +65,6 @@ Add the dependencies below to enable OpenTelemetry in FirstService and SecondSer
 	<version>1.27.2</version>
 </dependency>
 ```
- 
 
 ### Tracer Configuration
 
@@ -129,7 +125,6 @@ OpenTelemetrySdk.getTracerFactory().addSpanProcessor(jaegerProcessor);
 Here you will create rest controllers for FirstService and SecondService.
 FirstService will send a GET request to SecondService to get the current time. FirstService will return SecondSerivce's time and it will append a message. 
 
-
 ## Section 1: Manual Instrumentation with Java SDK
 
 ### Add OpenTelemetry to FirstService and SecondService:
@@ -145,17 +140,15 @@ Required dependencies and configurations can be found [here](#setup-for-section-
 5. Start a span to wrap the FirstServiceController
 6. Configure HttpUtils.callEndpoint to inject span context into request. This is key to propagate the trace to the SecondService
 
-
 ```java
 @SpringBootApplication
 public class FirstServiceApplication {
 
-	public static void main(String[] args) throws IOException {
-		SpringApplication.run(FirstServiceApplication.class, args);
-	}
+  public static void main(String[] args) throws IOException {
+    SpringApplication.run(FirstServiceApplication.class, args);
+  }
 }
 ```
-
 
 ```java
 import org.springframework.beans.factory.annotation.Autowired;
@@ -172,35 +165,34 @@ import HttpUtils;
 @RestController
 @RequestMapping(value = "/message")
 public class FirstServiceController {
-    @Autowired
-    private Tracer tracer;
+  @Autowired
+  private Tracer tracer;
 
-    @Autowired
-    HttpUtils httpUtils;
+  @Autowired
+  HttpUtils httpUtils;
 
-    private static String SS_URL = "http://localhost:8081/time";
+  private static String SS_URL = "http://localhost:8081/time";
 
-    @GetMapping
-    public String firstTracedMethod() {
-	Span span = tracer.spanBuilder("message").startSpan();
-	span.addEvent("Controller Entered");
-	span.setAttribute("what.are.you", "Je suis attribute");
+  @GetMapping
+  public String firstTracedMethod() {
+    Span span = tracer.spanBuilder("message").startSpan();
+    span.addEvent("Controller Entered");
+    span.setAttribute("what.are.you", "Je suis attribute");
 
-	try (Scope scope = tracer.withSpan(span)) {
-	    return "Second Service says: "  + httpUtils.callEndpoint(SS_URL);
-	} catch (Exception e) {
-	    span.setAttribute("error", e.toString());
-	    span.setAttribute("error", true);
-	    return "ERORR: I can't tell the time";
-	} finally {
-	    span.end();
-	}
+    try (Scope scope = tracer.withSpan(span)) {
+      return "Second Service says: " + httpUtils.callEndpoint(SS_URL);
+    } catch (Exception e) {
+      span.setAttribute("error", e.toString());
+      span.setAttribute("error", true);
+      return "ERORR: I can't tell the time";
+    } finally {
+      span.end();
     }
+  }
 }
 ```
 
 HttpUtils is a helper class that injects the current span context into request headers. This involves adding the parent trace id and the trace-state to the request header. For this example, I used RestTemplate to send requests from FirstService to SecondService. A similar approach can be used with popular Java Web Clients such as okhttp and apache http client. The key is this implementation is to override the put method in HttpTextFormat.Setter<?> to handle your request format. HttpTextFormat.inject will use this setter to set the traceparent and tracestate fields in your request. These values will be used to propagate your span context to external services.
-
 
 ```java
 import org.springframework.beans.factory.annotation.Autowired;
@@ -219,38 +211,38 @@ import io.opentelemetry.trace.Tracer;
 @Component
 public class HttpUtils {
 
-    @Autowired
-    private Tracer tracer;
+  @Autowired
+  private Tracer tracer;
 
-    private HttpTextFormat<SpanContext> textFormat;
-    private HttpTextFormat.Setter<HttpHeaders> setter;
+  private HttpTextFormat<SpanContext> textFormat;
+  private HttpTextFormat.Setter<HttpHeaders> setter;
 
-    public HttpUtils(Tracer tracer) {
-	textFormat = tracer.getHttpTextFormat();
-	setter = new HttpTextFormat.Setter<HttpHeaders>() {
-	    @Override
-	    public void put(HttpHeaders headers, String key, String value) {
-		headers.set(key, value);
-	    }
-	};
-    }
+  public HttpUtils(Tracer tracer) {
+    textFormat = tracer.getHttpTextFormat();
+    setter = new HttpTextFormat.Setter<HttpHeaders>() {
+      @Override
+      public void put(HttpHeaders headers, String key, String value) {
+        headers.set(key, value);
+      }
+    };
+  }
 
-    public String callEndpoint(String url) throws Exception {
-	HttpHeaders headers = new HttpHeaders();
+  public String callEndpoint(String url) throws Exception {
+    HttpHeaders headers = new HttpHeaders();
 
-	Span currentSpan = tracer.getCurrentSpan();
-	textFormat.inject(currentSpan.getContext(), headers, setter);
+    Span currentSpan = tracer.getCurrentSpan();
+    textFormat.inject(currentSpan.getContext(), headers, setter);
 
-	HttpEntity<String> entity = new HttpEntity<String>(headers);
-	RestTemplate restTemplate = new RestTemplate();
-	
-	ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+    HttpEntity<String> entity = new HttpEntity<String>(headers);
+    RestTemplate restTemplate = new RestTemplate();
 
-	return response.getBody();
-    }
+    ResponseEntity<String> response =
+        restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+
+    return response.getBody();
+  }
 }
 ```
-
 ### SecondService:
 
 1. Ensure OpenTelemetry dependencies are included
@@ -259,7 +251,6 @@ public class HttpUtils {
 4. Create a RestController for SecondService
 5. Start a span to wrap the SecondServiceController
   
-
 ```java
 import java.io.IOException;
 
@@ -269,12 +260,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class SecondServiceApplication {
 
-    public static void main(String[] args) throws IOException {
-	SpringApplication.run(SecondServiceApplication.class, args);
-    }
+  public static void main(String[] args) throws IOException {
+    SpringApplication.run(SecondServiceApplication.class, args);
+  }
 }
 ```
-
 
 ```java
 import org.springframework.beans.factory.annotation.Autowired;
@@ -289,21 +279,21 @@ import io.opentelemetry.trace.Tracer;
 @RestController
 @RequestMapping(value = "/time")
 public class SecondServiceController {
-    @Autowired
-    private Tracer tracer;
+  @Autowired
+  private Tracer tracer;
 
-    @GetMapping
-    public String callSecondTracedMethod() {
-	Span span = tracer.spanBuilder("ingredient").startSpan();
-	span.addEvent("SecondServiceController Entered");
-	span.setAttribute("what.am.i", "Tu es une legume");
+  @GetMapping
+  public String callSecondTracedMethod() {
+    Span span = tracer.spanBuilder("ingredient").startSpan();
+    span.addEvent("SecondServiceController Entered");
+    span.setAttribute("what.am.i", "Tu es une legume");
 
-	try (Scope scope = tracer.withSpan(span)) {
-	    return "It's time to get a watch";
-	} finally {
-	    span.end();
-	}
+    try (Scope scope = tracer.withSpan(span)) {
+      return "It's time to get a watch";
+    } finally {
+      span.end();
     }
+  }
 }
 ```
 
@@ -347,13 +337,13 @@ import io.opentelemetry.trace.Tracer;
 @RestController
 @RequestMapping(value = "/time")
 public class SecondServiceController {
-    @Autowired
-    private Tracer tracer;
+  @Autowired
+  private Tracer tracer;
 
-    @GetMapping
-    public String callSecondTracedMethod() {
+  @GetMapping
+  public String callSecondTracedMethod() {
     return "It's time to get a watch";
-    }
+  }
 }
 ```
 
@@ -380,59 +370,59 @@ import io.opentelemetry.trace.Tracer;
 @Component
 public class ControllerTraceInterceptor implements HandlerInterceptor {
 
-    @Autowired
-    private Tracer tracer;
+  @Autowired
+  private Tracer tracer;
 
-    @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
-	    throws Exception {
-	HttpTextFormat<SpanContext> textFormat = tracer.getHttpTextFormat();
-	Span span;
-	try {
+  @Override
+  public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
+      throws Exception {
+    HttpTextFormat<SpanContext> textFormat = tracer.getHttpTextFormat();
+    Span span;
+    try {
 
-	    SpanContext spanContext = textFormat.extract(request, new HttpTextFormat.Getter<HttpServletRequest>() {
-		@Override
-		public String get(HttpServletRequest req, String key) {
-		    return req.getHeader(key);
-		}
-	    });
-	    span = tracer.spanBuilder(request.getRequestURI()).setParent(spanContext).startSpan();
-	    span.setAttribute("handler", "pre");
-	} catch (Exception e) {
-	    span = tracer.spanBuilder(request.getRequestURI()).startSpan();
-	    span.addEvent(e.toString());
-	    span.setAttribute("error", true);
-	}
-	tracer.withSpan(span);
-
-	return true;
+      SpanContext spanContext =
+          textFormat.extract(request, new HttpTextFormat.Getter<HttpServletRequest>() {
+            @Override
+            public String get(HttpServletRequest req, String key) {
+              return req.getHeader(key);
+            }
+          });
+      span = tracer.spanBuilder(request.getRequestURI()).setParent(spanContext).startSpan();
+      span.setAttribute("handler", "pre");
+    } catch (Exception e) {
+      span = tracer.spanBuilder(request.getRequestURI()).startSpan();
+      span.addEvent(e.toString());
+      span.setAttribute("error", true);
     }
+    tracer.withSpan(span);
 
-    @Override
-    public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler,
-	    ModelAndView modelAndView) throws Exception {
+    return true;
+  }
 
-	HttpTextFormat<SpanContext> textFormat = tracer.getHttpTextFormat();
-	Span currentSpan = tracer.getCurrentSpan();
-	currentSpan.setAttribute("handler", "post");
-	textFormat.inject(currentSpan.getContext(), response, new HttpTextFormat.Setter<HttpServletResponse>() {
-	    @Override
-	    public void put(HttpServletResponse response, String key, String value) {
-		response.addHeader(key, value);
-	    }
-	});
-	currentSpan.end();
-    }
+  @Override
+  public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler,
+      ModelAndView modelAndView) throws Exception {
 
-    @Override
-    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler,
-	    Exception exception) throws Exception {
-    }
+    HttpTextFormat<SpanContext> textFormat = tracer.getHttpTextFormat();
+    Span currentSpan = tracer.getCurrentSpan();
+    currentSpan.setAttribute("handler", "post");
+    textFormat.inject(currentSpan.getContext(), response,
+        new HttpTextFormat.Setter<HttpServletResponse>() {
+          @Override
+          public void put(HttpServletResponse response, String key, String value) {
+            response.addHeader(key, value);
+          }
+        });
+    currentSpan.end();
+  }
+
+  @Override
+  public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
+      Object handler, Exception exception) throws Exception {}
 }
 ```
 
 The final step is to register an instance of the ControllerTraceInterceptor:
-
 
 ```java
 import org.springframework.beans.factory.annotation.Autowired;
@@ -443,13 +433,13 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupp
 @Component
 public class InterceptorConfig extends WebMvcConfigurationSupport {
 
-    @Autowired
-    ControllerTraceInterceptor controllerTraceInterceptor;
+  @Autowired
+  ControllerTraceInterceptor controllerTraceInterceptor;
 
-    @Override
-    public void addInterceptors(InterceptorRegistry registry){
-        registry.addInterceptor(controllerTraceInterceptor);
-    }
+  @Override
+  public void addInterceptors(InterceptorRegistry registry) {
+    registry.addInterceptor(controllerTraceInterceptor);
+  }
 }
 ```
 
@@ -472,30 +462,30 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping(value = "/message")
 public class FirstServiceController {
-    @Autowired
-    private Tracer tracer;
-    
-    private RestTemplate restTemplate = new RestTemplate();
+  @Autowired
+  private Tracer tracer;
 
-    @Autowired
-    HttpUtils httpUtils;
+  private RestTemplate restTemplate = new RestTemplate();
 
-    private static String SS_URL = "http://localhost:8081/time";
+  @Autowired
+  HttpUtils httpUtils;
 
-    @GetMapping
-    public String firstTracedMethod() {
+  private static String SS_URL = "http://localhost:8081/time";
 
-	ResponseEntity<String> response = restTemplate.exchange(SS_URL, HttpMethod.GET, null, String.class);
-	String secondServiceTime = response.getBody();
-	
-	return "Second Service says: " + secondServiceTime;
-	
-    }
+  @GetMapping
+  public String firstTracedMethod() {
+
+    ResponseEntity<String> response =
+        restTemplate.exchange(SS_URL, HttpMethod.GET, null, String.class);
+    String secondServiceTime = response.getBody();
+
+    return "Second Service says: " + secondServiceTime;
+
+  }
 }
 ```
 
 As seen in the setup of SecondService, create implement the TraceInterceptor interface to wrap requests to the SecondServiceController in a span. Then register this new handler by extending HandlerInterceptor. In effect, you will be taking a copy of InterceptorConfig.java and ControllerTraceInterceptor.java from SecondService and adding it to FirstService. The sample code can be found [here](#create-controller-interceptor).
-
 
 #### Create Client Http Request Interceptor
 
@@ -525,33 +515,32 @@ import io.opentelemetry.trace.Tracer;
 @Component
 public class RestTemplateHeaderModifierInterceptor implements ClientHttpRequestInterceptor {
 
-    @Autowired
-    private Tracer tracer;
+  @Autowired
+  private Tracer tracer;
 
-    @Override
-    public ClientHttpResponse intercept(HttpRequest request, byte[] body, ClientHttpRequestExecution execution)
-	    throws IOException {
+  @Override
+  public ClientHttpResponse intercept(HttpRequest request, byte[] body,
+      ClientHttpRequestExecution execution) throws IOException {
 
-	Span currentSpan = tracer.getCurrentSpan();
-	currentSpan.setAttribute("client_http", "inject");
-	currentSpan.addEvent("Internal request sent to food service");
+    Span currentSpan = tracer.getCurrentSpan();
+    currentSpan.setAttribute("client_http", "inject");
+    currentSpan.addEvent("Internal request sent to food service");
 
-	HttpTextFormat<SpanContext> textFormat = tracer.getHttpTextFormat();
+    HttpTextFormat<SpanContext> textFormat = tracer.getHttpTextFormat();
 
-	textFormat.inject(currentSpan.getContext(), request, new HttpTextFormat.Setter<HttpRequest>() {
-	    @Override
-	    public void put(HttpRequest request, String key, String value) {
-		request.getHeaders().set(key, value);
-	    }
-	});
+    textFormat.inject(currentSpan.getContext(), request, new HttpTextFormat.Setter<HttpRequest>() {
+      @Override
+      public void put(HttpRequest request, String key, String value) {
+        request.getHeaders().set(key, value);
+      }
+    });
 
-	ClientHttpResponse response = execution.execute(request, body);
+    ClientHttpResponse response = execution.execute(request, body);
 
-	return response;
-    }
+    return response;
+  }
 }
 ```
-
 
 ```java
 import java.util.ArrayList;
@@ -566,22 +555,22 @@ import org.springframework.web.client.RestTemplate;
 @Configuration
 public class RestClientConfig {
 
-    @Autowired
-    RestTemplateHeaderModifierInterceptor restTemplateHeaderModifierInterceptor;
+  @Autowired
+  RestTemplateHeaderModifierInterceptor restTemplateHeaderModifierInterceptor;
 
-    @Bean
-    public RestTemplate restTemplate() {
-	RestTemplate restTemplate = new RestTemplate();
+  @Bean
+  public RestTemplate restTemplate() {
+    RestTemplate restTemplate = new RestTemplate();
 
-	List<ClientHttpRequestInterceptor> interceptors = restTemplate.getInterceptors();
-	if (interceptors.isEmpty()) {
-	    interceptors = new ArrayList<>();
-	}
-	interceptors.add(restTemplateHeaderModifierInterceptor);
-	restTemplate.setInterceptors(interceptors);
-
-	return restTemplate;
+    List<ClientHttpRequestInterceptor> interceptors = restTemplate.getInterceptors();
+    if (interceptors.isEmpty()) {
+      interceptors = new ArrayList<>();
     }
+    interceptors.add(restTemplateHeaderModifierInterceptor);
+    restTemplate.setInterceptors(interceptors);
+
+    return restTemplate;
+  }
 }
 ```
 
@@ -649,7 +638,6 @@ Note: This data is read from a json file. Ingredient data is stored in [FoodVend
 
 6. Inspect trace on the Jaeger UI: `http://localhost:16686`
 
-
 ## Section 3: Instrumentation using opentelemetry-contrib-spring (IN PROGRESS) 
 
 ### Dependencies
@@ -687,7 +675,6 @@ This annotates a method definition. It wraps a method in a span or logs a method
 - String: name
 - Boolean: isEvent (default false)
 
-
 #### @TraceClass 
 
 This annotates a class definition. It wraps all public methods in a span or logs all method calls as an event.
@@ -697,14 +684,12 @@ This annotates a class definition. It wraps all public methods in a span or logs
 - Boolean: isEvent
 - Boolean: includeMethodName (logs method signature, default false)
 
-
 #### @TraceRestControllers
 
 This annotates a class definition with @RestController annotation. It creates a new span for rest controllers when a request is received. 
 
 No @TraceRestControllers fields: 
 - Default span name: the name of the class
-
 
 #### @InjectTraceRestTemplate
 
@@ -721,20 +706,18 @@ This annotates a hibernate entity. It wraps all database calls using the Hiberna
 - String: name
 - Boolean: isEvent (default false)
 
-
 ### Example Usage
 
- 
 #### @ConfigTracer
 
 ```java
-@ConfigTracer(name="tracerName")
+ConfigTracer(name = "tracerName")
 @SpringBootApplication
 public class SecondServiceApplication {
 
-    public static void main(String[] args) throws IOException {
-	SpringApplication.run(SecondServiceApplication.class, args);
-    }
+  public static void main(String[] args) throws IOException {
+    SpringApplication.run(SecondServiceApplication.class, args);
+  }
 
 }
 ```
@@ -743,26 +726,25 @@ public class SecondServiceApplication {
 
 
 ```java
-@TraceMethod(name="methodName", isEvent=True)
+@TraceMethod(name = "methodName", isEvent = True)
 @GetMapping
 public String callSecondTracedMethod() {
-return "It's time to get a watch";
+  return "It's time to get a watch";
 }
 ```
-
 
 #### @TraceClass 
  
 
 ```java
-@TraceClass(name="className", isEvent=True, includeMethodName=True)
+@TraceClass(name = "className", isEvent = True, includeMethodName = True)
 @RestController
 public class SecondServiceController {
 
-    @GetMapping
-    public String callSecondTracedMethod() {
+  @GetMapping
+  public String callSecondTracedMethod() {
     return "It's time to get a watch";
-    }
+  }
 }
 ```
 
@@ -770,45 +752,43 @@ public class SecondServiceController {
 
 
 ```java
-@TraceRestControllers 
+@TraceRestControllers
 @SpringBootApplication
 public class SecondServiceApplication {
 
-	public static void main(String[] args) throws IOException {
-		SpringApplication.run(SecondServiceApplication.class, args);
-	}
+  public static void main(String[] args) throws IOException {
+    SpringApplication.run(SecondServiceApplication.class, args);
+  }
 }
 ```
 
-
 #### @InjectTraceRestTemplate
 
-
 ```java
-@InjectTraceRestTemplate(isEvent=True)
+@InjectTraceRestTemplate(isEvent = True)
 @SpringBootApplication
 public class SecondServiceApplication {
 
-	public static void main(String[] args) throws IOException {
-		SpringApplication.run(SecondServiceApplication.class, args);
-	}
+  public static void main(String[] args) throws IOException {
+    SpringApplication.run(SecondServiceApplication.class, args);
+  }
 }
 ```
 
 #### @TraceHibernateDatabaseCalls
 
 ```java
-@TraceHibernateDatabaseCalls(name="entityName") 
+@TraceHibernateDatabaseCalls(name = "r/uwaterloo")
 @Entity
-public class Book {
- 
-    @Id
-    @GeneratedValue
-    private Long id;
-    private String name;
- 
-    // standard constructors
- 
-    // standard getters and setters
+public class WaterlooStudents {
+
+  @Id
+  @GeneratedValue
+  private Long id;
+  private String gooseName;
+
+  // standard constructors
+
+  // standard getters and setters
 }
 ```
