@@ -19,34 +19,32 @@ import starterproject.foodsupplier.services.FoodSupplierService;
 
 /**
  * Maps vendors to available ingredients ingredients
- */ 
+ */
 @RequestMapping("/foodsupplier/vendors")
 @RestController
-public class FoodSupplierController
-{
-	private static final Logger LOG = Logger.getLogger(FoodSupplierController.class.getName());
-	
-	@Autowired
-	private FoodSupplierService foodSupplierService;
-	@Autowired
-    Tracer tracer;
-  
-	@GetMapping
-    public List<Vendor> getVendorsByIngredient(@RequestParam String ingredientName)
-    {
-		Span span = tracer.getCurrentSpan();
-		span.addEvent("FoodSupplierController getVendorsByIngredient");
-		LOG.info("FoodSupplierController /foodsupplier/vendors called span starts");
-		
-		List<Vendor> vendors = null;
-        try{
-        	vendors = foodSupplierService.getVendorsByIngredient(ingredientName);
-        } catch (Exception e) {
-        	span.setStatus(Status.ABORTED);
-            span.addEvent("Error while calling service");
-            LOG.severe(String.format("Error while calling service: %s", e.getMessage()));
-		}
-        
-        return vendors;
+public class FoodSupplierController {
+  private static final Logger LOG = Logger.getLogger(FoodSupplierController.class.getName());
+
+  @Autowired
+  private FoodSupplierService foodSupplierService;
+  @Autowired
+  Tracer tracer;
+
+  @GetMapping
+  public List<Vendor> getVendorsByIngredient(@RequestParam String ingredientName) {
+    Span span = tracer.getCurrentSpan();
+    span.addEvent("FoodSupplierController getVendorsByIngredient");
+    LOG.info("FoodSupplierController /foodsupplier/vendors called span starts");
+
+    List<Vendor> vendors = null;
+    try {
+      vendors = foodSupplierService.getVendorsByIngredient(ingredientName);
+    } catch (Exception e) {
+      span.setStatus(Status.ABORTED);
+      span.addEvent("Error while calling service");
+      LOG.severe(String.format("Error while calling service: %s", e.getMessage()));
     }
+
+    return vendors;
+  }
 }

@@ -16,26 +16,24 @@ import org.springframework.util.StreamUtils;
  * Read JSON file
  *
  */
-public class JSONReaderHelper
-{	
-    public static JSONObject getData(String resourceName)
-    {
-    	JSONObject dataJson = new JSONObject();
-        try 
-        {
-        	Resource resource = new ClassPathResource(resourceName);
-            String jsonString = StreamUtils.copyToString(resource.getInputStream(), Charset.defaultCharset());
-        	
-            JSONParser jsonParser = new JSONParser();
-        	dataJson = (JSONObject) jsonParser.parse(jsonString);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (ParseException e) {
-            e.printStackTrace();
-        }
+public class JSONReaderHelper {
+  public static JSONObject getData(String resourceName) {
+    JSONObject dataJson = new JSONObject();
+    try {
+      Resource resource = new ClassPathResource(resourceName);
+      String jsonString =
+          StreamUtils.copyToString(resource.getInputStream(), Charset.defaultCharset());
 
-        return dataJson;
+      JSONParser jsonParser = new JSONParser();
+      dataJson = (JSONObject) jsonParser.parse(jsonString);
+    } catch (FileNotFoundException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    } catch (ParseException e) {
+      e.printStackTrace();
     }
+
+    return dataJson;
+  }
 }

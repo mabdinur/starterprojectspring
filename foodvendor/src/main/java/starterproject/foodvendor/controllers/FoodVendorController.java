@@ -19,35 +19,34 @@ import starterproject.foodvendor.services.FoodVendorService;
 
 /**
  * Serves vendor ingredient data
- */ 
+ */
 @RestController
 @RequestMapping(value = "/foodvendor/vendors")
-public class FoodVendorController
-{
-	private static final Logger LOG = Logger.getLogger(FoodVendorController.class.getName());
-	
-	@Autowired
-	private FoodVendorService foodVendorService;
-	@Autowired
-    Tracer tracer;
-	
-	@PostMapping
-	public List<VendorInventory> getIngredientFromVendors(@RequestBody List<Vendor> vendors, @RequestParam String ingredientName)
-	{
-		Span span = tracer.getCurrentSpan();
-		span.addEvent("FoodVendorController getIngredientFromVendors");
-		LOG.info("FoodVendorController /foodvendor/vendors called span starts");
-		
-		List<VendorInventory> vendorInventory = null;
-        try{
-        	vendorInventory = foodVendorService.getIngredientFromVendors(vendors, ingredientName);
-        } catch (Exception e) {
-        	span.setStatus(Status.ABORTED);
-            span.addEvent("Error while calling service");
-            LOG.severe(String.format("Error while calling service: %s", e.getMessage()));
-		}
-       
-        return vendorInventory;
-	}
-	
+public class FoodVendorController {
+  private static final Logger LOG = Logger.getLogger(FoodVendorController.class.getName());
+
+  @Autowired
+  private FoodVendorService foodVendorService;
+  @Autowired
+  Tracer tracer;
+
+  @PostMapping
+  public List<VendorInventory> getIngredientFromVendors(@RequestBody List<Vendor> vendors,
+      @RequestParam String ingredientName) {
+    Span span = tracer.getCurrentSpan();
+    span.addEvent("FoodVendorController getIngredientFromVendors");
+    LOG.info("FoodVendorController /foodvendor/vendors called span starts");
+
+    List<VendorInventory> vendorInventory = null;
+    try {
+      vendorInventory = foodVendorService.getIngredientFromVendors(vendors, ingredientName);
+    } catch (Exception e) {
+      span.setStatus(Status.ABORTED);
+      span.addEvent("Error while calling service");
+      LOG.severe(String.format("Error while calling service: %s", e.getMessage()));
+    }
+
+    return vendorInventory;
+  }
+
 }

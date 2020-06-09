@@ -10,5 +10,5 @@ import starterproject.foodvendor.data.Vendor;
  */
 public interface FoodVendor {
 
-    public List<VendorInventory> getIngredientFromVendors(List<Vendor> vendors, String itemName);
+  public List<VendorInventory> getIngredientFromVendors(List<Vendor> vendors, String itemName);
 }

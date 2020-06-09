@@ -17,64 +17,60 @@ import io.opentelemetry.trace.Tracer;
 
 @Component
 public class TraceInterceptor implements HandlerInterceptor {
-		
-	private static final Logger LOG = Logger.getLogger(TraceInterceptor.class.getName()); 
-    
-	@Autowired
-    private Tracer tracer;
 
-    @Override
-    public boolean preHandle(
-       HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        HttpTextFormat<SpanContext> textFormat = tracer.getHttpTextFormat();
-        Span span;
-        try{
+  private static final Logger LOG = Logger.getLogger(TraceInterceptor.class.getName());
 
-            SpanContext spanContext = textFormat.extract(
-                request, new HttpTextFormat.Getter<HttpServletRequest>() {
-                    @Override
-                    public String get(HttpServletRequest req, String key) {
-                        return req.getHeader(key);
-                    }
-                });
-                 span = tracer.spanBuilder(request.getRequestURI()).setParent(spanContext).startSpan();
-                 span.setAttribute("handler", "pre");
-        }
-        catch(Exception e){
-            span = tracer.spanBuilder(request.getRequestURI()).startSpan();
-            span.setAttribute("handler", "pre");
+  @Autowired
+  private Tracer tracer;
 
-            span.addEvent(e.toString());
-            span.setAttribute("warn", true);
-        }
-        tracer.withSpan(span);
+  @Override
+  public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
+      throws Exception {
+    HttpTextFormat<SpanContext> textFormat = tracer.getHttpTextFormat();
+    Span span;
+    try {
 
-        LOG.info("Pre Handle Called");
-       return true;
-    }
-
-    @Override
-    public void postHandle(
-       HttpServletRequest request, HttpServletResponse response, Object handler,
-       ModelAndView modelAndView) throws Exception {
-
-        HttpTextFormat<SpanContext> textFormat = tracer.getHttpTextFormat();
-        Span currentSpan = tracer.getCurrentSpan();
-        currentSpan.setAttribute("handler", "post");
-        textFormat.inject(currentSpan.getContext(), response, new
-        HttpTextFormat.Setter<HttpServletResponse>() {
+      SpanContext spanContext =
+          textFormat.extract(request, new HttpTextFormat.Getter<HttpServletRequest>() {
             @Override
-            public void put(HttpServletResponse response, String key, String value)
-            {
-            response.addHeader(key, value);
+            public String get(HttpServletRequest req, String key) {
+              return req.getHeader(key);
             }
-        });
-        currentSpan.end();
-        LOG.info("Post Handler Called");
-        }
+          });
+      span = tracer.spanBuilder(request.getRequestURI()).setParent(spanContext).startSpan();
+      span.setAttribute("handler", "pre");
+    } catch (Exception e) {
+      span = tracer.spanBuilder(request.getRequestURI()).startSpan();
+      span.setAttribute("handler", "pre");
 
-        @Override
-        public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
-           Object handler, Exception exception) throws Exception {
-           }
+      span.addEvent(e.toString());
+      span.setAttribute("warn", true);
+    }
+    tracer.withSpan(span);
+
+    LOG.info("Pre Handle Called");
+    return true;
+  }
+
+  @Override
+  public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler,
+      ModelAndView modelAndView) throws Exception {
+
+    HttpTextFormat<SpanContext> textFormat = tracer.getHttpTextFormat();
+    Span currentSpan = tracer.getCurrentSpan();
+    currentSpan.setAttribute("handler", "post");
+    textFormat.inject(currentSpan.getContext(), response,
+        new HttpTextFormat.Setter<HttpServletResponse>() {
+          @Override
+          public void put(HttpServletResponse response, String key, String value) {
+            response.addHeader(key, value);
+          }
+        });
+    currentSpan.end();
+    LOG.info("Post Handler Called");
+  }
+
+  @Override
+  public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
+      Object handler, Exception exception) throws Exception {}
 }

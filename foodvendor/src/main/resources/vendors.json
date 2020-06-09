@@ -1,53 +1,53 @@
 {
-    "shop1":{
-        "item1": {
-            "price": 10,
-            "quantity": 1,
-            "currency": "CAD"
-        },
-        "item2": {
-            "price": 20,
-            "quantity": 2,
-            "currency": "CAD"
-        },
-        "item3": {
-            "price": 30,
-            "quantity": 3,
-            "currency": "CAD"
-        }
-    },
-    "shop2":{
-        "item3": {
-            "price": 1,
-            "quantity": 10,
-            "currency": "CAD"
-        },
-        "item4": {
-            "price": 40,
-            "quantity": 4,
-            "currency": "CAD"
-        },
-        "item5": {
-            "price": 50,
-            "quantity": 5,
-            "currency": "CAD"
-        }
-    },
-    "shop3":{
-        "item6": {
-            "price": 60,
-            "quantity": 6,
-            "currency": "CAD"
-        },
-        "item7": {
-            "price": 70,
-            "quantity": 7,
-            "currency": "CAD"
-        },
-        "item8": {
-            "price": 80,
-            "quantity": 8,
-            "currency": "CAD"
-        }
-    }
+	"shop1": {
+		"item1": {
+			"price": 10,
+			"quantity": 1,
+			"currency": "CAD"
+		},
+		"item2": {
+			"price": 20,
+			"quantity": 2,
+			"currency": "CAD"
+		},
+		"item3": {
+			"price": 30,
+			"quantity": 3,
+			"currency": "CAD"
+		}
+	},
+	"shop2": {
+		"item3": {
+			"price": 1,
+			"quantity": 10,
+			"currency": "CAD"
+		},
+		"item4": {
+			"price": 40,
+			"quantity": 4,
+			"currency": "CAD"
+		},
+		"item5": {
+			"price": 50,
+			"quantity": 5,
+			"currency": "CAD"
+		}
+	},
+	"shop3": {
+		"item6": {
+			"price": 60,
+			"quantity": 6,
+			"currency": "CAD"
+		},
+		"item7": {
+			"price": 70,
+			"quantity": 7,
+			"currency": "CAD"
+		},
+		"item8": {
+			"price": 80,
+			"quantity": 8,
+			"currency": "CAD"
+		}
+	}
 }

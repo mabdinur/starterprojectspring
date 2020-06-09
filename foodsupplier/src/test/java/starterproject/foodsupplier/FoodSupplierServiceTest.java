@@ -13,16 +13,15 @@ import starterproject.foodsupplier.services.FoodSupplierService;
 
 public class FoodSupplierServiceTest {
 
-	private static final String VENDOR = "shop1";
+  private static final String VENDOR = "shop1";
 
-    private static final String INGREDIENT_NAME = "item1";
+  private static final String INGREDIENT_NAME = "item1";
 
-    @Test
-    public void testGetVendorsByIngredient()
-    {
-        FoodSupplier foodSupplier = new FoodSupplierService();
-        Vendor test_vendor = new Vendor(VENDOR);
-        List<Vendor> storesWithIngredient = foodSupplier.getVendorsByIngredient(INGREDIENT_NAME);
-        assertTrue(storesWithIngredient.stream().anyMatch(vendor -> vendor.equals(test_vendor)));
-    }
+  @Test
+  public void testGetVendorsByIngredient() {
+    FoodSupplier foodSupplier = new FoodSupplierService();
+    Vendor test_vendor = new Vendor(VENDOR);
+    List<Vendor> storesWithIngredient = foodSupplier.getVendorsByIngredient(INGREDIENT_NAME);
+    assertTrue(storesWithIngredient.stream().anyMatch(vendor -> vendor.equals(test_vendor)));
+  }
 }

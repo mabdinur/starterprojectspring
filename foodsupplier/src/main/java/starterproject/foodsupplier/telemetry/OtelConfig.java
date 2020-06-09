@@ -17,24 +17,24 @@ import io.opentelemetry.exporters.logging.*;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 
 @Configuration
-@EnableAutoConfiguration (exclude={DataSourceAutoConfiguration.class, HibernateJpaAutoConfiguration.class})
+@EnableAutoConfiguration(
+    exclude = {DataSourceAutoConfiguration.class, HibernateJpaAutoConfiguration.class})
 public class OtelConfig {
 
-    @Bean
-    public Tracer otelTracer() throws Exception{
-        final Tracer tracer = OpenTelemetry.getTracerFactory().get("com.forrest.levelone");
-        SpanProcessor jaegerProcessor =
-            SimpleSpansProcessor.newBuilder(JaegerGrpcSpanExporter.newBuilder()
-            .setServiceName("otel_foodsupplier")
-            .setChannel(ManagedChannelBuilder.forAddress(
-                    "localhost", 14250).usePlaintext().build())
-            .build()).build();
+  @Bean
+  public Tracer otelTracer() throws Exception {
+    final Tracer tracer = OpenTelemetry.getTracerFactory().get("com.forrest.levelone");
+    SpanProcessor jaegerProcessor = SimpleSpansProcessor
+        .newBuilder(JaegerGrpcSpanExporter.newBuilder().setServiceName("otel_foodsupplier")
+            .setChannel(ManagedChannelBuilder.forAddress("localhost", 14250).usePlaintext().build())
+            .build())
+        .build();
 
-        SpanProcessor logProcessor = SimpleSpansProcessor.newBuilder(new LoggingExporter()).build();
+    SpanProcessor logProcessor = SimpleSpansProcessor.newBuilder(new LoggingExporter()).build();
 
-        OpenTelemetrySdk.getTracerFactory().addSpanProcessor(logProcessor);
-        OpenTelemetrySdk.getTracerFactory().addSpanProcessor(jaegerProcessor);
+    OpenTelemetrySdk.getTracerFactory().addSpanProcessor(logProcessor);
+    OpenTelemetrySdk.getTracerFactory().addSpanProcessor(jaegerProcessor);
 
-        return tracer;
-    }
+    return tracer;
+  }
 }

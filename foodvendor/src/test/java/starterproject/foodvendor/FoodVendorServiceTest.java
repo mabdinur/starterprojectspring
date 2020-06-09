@@ -18,28 +18,27 @@ import starterproject.foodvendor.services.FoodVendorService;
 
 @RunWith(SpringRunner.class)
 public class FoodVendorServiceTest {
- 
-	private static final String VENDOR_NAME = "shop1";
-    private static final String INGREDIENT_NAME = "item1";
 
-    private static final float PRICE = 10;
-    private static final float QUANTITY = 1;
+  private static final String VENDOR_NAME = "shop1";
+  private static final String INGREDIENT_NAME = "item1";
 
-    @Test
-    public void testGetVendorsByIngredient()
-    {
-        FoodVendor foodVendor = new FoodVendorService();
-        List<Vendor> vendors = Arrays.asList( new Vendor(VENDOR_NAME));
-        List<VendorInventory> inventories =
-        		foodVendor.getIngredientFromVendors(vendors, INGREDIENT_NAME);
-        
-        VendorInventory inventory = inventories.get(0);
-        Vendor vendor = inventory.getVendor();
-        Ingredient ingredient = inventory.getIngredient(INGREDIENT_NAME);
-        
-        assertEquals(vendor.getName(), VENDOR_NAME);
-        assertNotNull(ingredient);
-        assertEquals(ingredient.getPrice(), PRICE, 0);
-        assertEquals(ingredient.getQuantity(), QUANTITY, 0);
-    } 
+  private static final float PRICE = 10;
+  private static final float QUANTITY = 1;
+
+  @Test
+  public void testGetVendorsByIngredient() {
+    FoodVendor foodVendor = new FoodVendorService();
+    List<Vendor> vendors = Arrays.asList(new Vendor(VENDOR_NAME));
+    List<VendorInventory> inventories =
+        foodVendor.getIngredientFromVendors(vendors, INGREDIENT_NAME);
+
+    VendorInventory inventory = inventories.get(0);
+    Vendor vendor = inventory.getVendor();
+    Ingredient ingredient = inventory.getIngredient(INGREDIENT_NAME);
+
+    assertEquals(vendor.getName(), VENDOR_NAME);
+    assertNotNull(ingredient);
+    assertEquals(ingredient.getPrice(), PRICE, 0);
+    assertEquals(ingredient.getQuantity(), QUANTITY, 0);
+  }
 }

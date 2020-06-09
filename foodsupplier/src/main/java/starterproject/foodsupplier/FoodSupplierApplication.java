@@ -9,8 +9,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class FoodSupplierApplication {
 
-	public static void main(String[] args) throws IOException {
-		SpringApplication.run(FoodSupplierApplication.class, args);
-	}
+  public static void main(String[] args) throws IOException {
+    SpringApplication.run(FoodSupplierApplication.class, args);
+  }
 
 }

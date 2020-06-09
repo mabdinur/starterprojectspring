@@ -19,31 +19,31 @@ import starterproject.foodfinder.data.Ingredient;
 @RunWith(SpringRunner.class)
 @SpringBootTest
 public class FoodFinderServiceTest {
-	
-	private static final String INGREDIENT_NAME = "item1";
-    private static final String VENDOR_NAME = "shop1";
-   
-	@MockBean
-	FoodService foodService;
-	
-	@Autowired
-	FoodFinderService foodFinderService;
-	
-    @Test
-    public void testGetVendorsByIngredient() throws Exception
-    {
-        Vendor [] vendors = { new Vendor(VENDOR_NAME) };
-        	
-        Mockito.when(foodService.getVendorsByIngredient(INGREDIENT_NAME)).thenReturn(vendors);
-        
-        Ingredient ingredient = new Ingredient(INGREDIENT_NAME);
-		VendorInventory[] inventories = {new VendorInventory(vendors[0], ingredient)};
-		
-		Mockito.when(foodService.getIngredientFromVendors(vendors, INGREDIENT_NAME)).thenReturn(inventories);
-        
-		VendorInventory[] testInventories = foodFinderService.getIngredient(INGREDIENT_NAME);
-        
-        assertEquals(inventories[0], testInventories[0]);
-    }
+
+  private static final String INGREDIENT_NAME = "item1";
+  private static final String VENDOR_NAME = "shop1";
+
+  @MockBean
+  FoodService foodService;
+
+  @Autowired
+  FoodFinderService foodFinderService;
+
+  @Test
+  public void testGetVendorsByIngredient() throws Exception {
+    Vendor[] vendors = {new Vendor(VENDOR_NAME)};
+
+    Mockito.when(foodService.getVendorsByIngredient(INGREDIENT_NAME)).thenReturn(vendors);
+
+    Ingredient ingredient = new Ingredient(INGREDIENT_NAME);
+    VendorInventory[] inventories = {new VendorInventory(vendors[0], ingredient)};
+
+    Mockito.when(foodService.getIngredientFromVendors(vendors, INGREDIENT_NAME))
+        .thenReturn(inventories);
+
+    VendorInventory[] testInventories = foodFinderService.getIngredient(INGREDIENT_NAME);
+
+    assertEquals(inventories[0], testInventories[0]);
+  }
 
 }

@@ -13,22 +13,21 @@ import io.opentelemetry.trace.Tracer;
 
 @Configuration
 public class RestClientConfig {
-	
-	@Autowired
-	RestTemplateHeaderModifierInterceptor restTemplateHeaderModifierInterceptor;
-	
-    @Bean
-    public RestTemplate restTemplate() {
-        RestTemplate restTemplate = new RestTemplate();
- 
-        List<ClientHttpRequestInterceptor> interceptors
-          = restTemplate.getInterceptors();
-        if (interceptors.isEmpty()) {
-            interceptors = new ArrayList<>();
-        }
-        interceptors.add(restTemplateHeaderModifierInterceptor);
-        restTemplate.setInterceptors(interceptors);
-        
-        return restTemplate;
+
+  @Autowired
+  RestTemplateHeaderModifierInterceptor restTemplateHeaderModifierInterceptor;
+
+  @Bean
+  public RestTemplate restTemplate() {
+    RestTemplate restTemplate = new RestTemplate();
+
+    List<ClientHttpRequestInterceptor> interceptors = restTemplate.getInterceptors();
+    if (interceptors.isEmpty()) {
+      interceptors = new ArrayList<>();
     }
+    interceptors.add(restTemplateHeaderModifierInterceptor);
+    restTemplate.setInterceptors(interceptors);
+
+    return restTemplate;
+  }
 }

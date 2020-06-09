@@ -9,11 +9,11 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupp
 @Component
 public class InterceptorConfig extends WebMvcConfigurationSupport {
 
-    @Autowired
-    TraceInterceptor traceInterceptor;
+  @Autowired
+  TraceInterceptor traceInterceptor;
 
-    @Override
-    public void addInterceptors(InterceptorRegistry registry){
-        registry.addInterceptor(traceInterceptor);
-    }
+  @Override
+  public void addInterceptors(InterceptorRegistry registry) {
+    registry.addInterceptor(traceInterceptor);
+  }
 }
