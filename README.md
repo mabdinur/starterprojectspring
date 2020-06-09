@@ -132,7 +132,11 @@ FirstService will send a GET request to SecondService to get the current time. F
 
 ## Section 1: Manual Instrumentation with Java SDK
 
-### Setup FirstService:
+### Add OpenTelemetry to FirstService and SecondService:
+
+Required dependencies and configurations can be found [here](#setup-for-section-1-and-section-2).
+
+### FirstService:
 
 1. Ensure OpenTelemetry dependencies are included
 2. Ensure an OpenTelemetry Tracer is configured
@@ -247,7 +251,7 @@ public class HttpUtils {
 }
 ```
 
-### Setup SecondService:
+### SecondService:
 
 1. Ensure OpenTelemetry dependencies are included
 2. Ensure an OpenTelemetry Tracer is configured
@@ -318,13 +322,15 @@ After running Jaeger locally, refresh the UI and view the exported traces from t
 
 ## Section 2: Using Spring Handlers and Interceptors
 
-
 Using section 1, create the FirstService and SecondService projects.  Add the required OpenTelemetry dependencies, configurations, and your chosen exporter to both projects. In this section, you will implement the Spring HandlerInerceptor interface to wrap all requests to FirstService and Second Service controllers in a span. 
 
 You will also use the RestTemplate HTTP client to send requests from FirstService to SecondService. To propagate the trace in this request you will also implement the ClientHttpRequestInterceptor interface. This implementation is only required for FirstService since this will be the only project that sends outbound requests (SecondService only receive requests from an external service). 
 
+### Add OpenTelemetry to FirstService and SecondService:
 
-### Setup SecondService:
+Required dependencies and configurations can be found [here](#setup-for-section-1-and-section-2).
+
+### SecondService:
 
 Create a rest controller for SecondService. This controller will return a string to the FirstService:
 
@@ -350,6 +356,8 @@ public class SecondServiceController {
     }
 }
 ```
+
+#### Create Controller Interceptor
 
 Create ControllerTraceInterceptor.java to wrap all requests to SecondServiceController in a span. This class will call the preHandle method before the rest controller is entered and the postHandle method after a response is created. 
 
@@ -447,7 +455,7 @@ public class InterceptorConfig extends WebMvcConfigurationSupport {
 
 Now your SecondService application is complete. Create the FirstService application using the instructions below and then run your distributed service!
 
-### Setup FirstService:
+### FirstService:
 
 Create a rest controller for FirstService. This controller will send a request to SecondService and then return the response to the client:
 
@@ -486,10 +494,10 @@ public class FirstServiceController {
 }
 ```
 
+As seen in the setup of SecondService, create implement the TraceInterceptor interface to wrap requests to the SecondServiceController in a span. Then register this new handler by extending HandlerInterceptor. In effect, you will be taking a copy of InterceptorConfig.java and ControllerTraceInterceptor.java from SecondService and adding it to FirstService. The sample code can be found [here](#create-controller-interceptor).
 
 
-As seen in the setup of SecondService, create implement the TraceInterceptor interface to wrap requests to the SecondServiceController in a span. Then register this new handler by extending HandlerInterceptor. In effect, you will be taking a copy of InterceptorConfig.java and ControllerTraceInterceptor.java from SecondService and adding it to FirstService.
-
+#### Create Client Http Request Interceptor
 
 Next, you will configure the ClientHttpRequestInterceptor to intercept all client HTTP requests made using RestTemplate.
 
