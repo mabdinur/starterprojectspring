@@ -677,7 +677,7 @@ This annotates a method definition. It wraps a method in a span or logs a method
 
 @TraceMethod fields: 
 - String: name
-- Boolean: isEvent 
+- Boolean: isEvent (default false)
 
 
 #### @TraceClass 
@@ -687,7 +687,7 @@ This annotates a class definition. It wraps all public methods in a span or logs
 @TraceClass fields: 
 - String: name
 - Boolean: isEvent
-- Boolean: includeMethodName (logs method signature)
+- Boolean: includeMethodName (logs method signature, default false)
 
 
 #### @TraceRestControllers
@@ -695,7 +695,7 @@ This annotates a class definition. It wraps all public methods in a span or logs
 This annotates a class definition with @RestController annotation. It creates a new span for rest controllers when a request is received. 
 
 No @TraceRestControllers fields: 
-- Default span name: controllerClassName
+- Default span name: the name of the class
 
 
 #### @InjectTraceRestTemplate
@@ -703,7 +703,7 @@ No @TraceRestControllers fields:
 Inject span context to all requests using RestTemplate.
 
 @InjectTraceRestTemplate fields: 
-- Boolean: isEventLogged (default true) 
+- Boolean: isEvent (default false) 
 
 #### @TraceHibernateDatabase
 
@@ -711,7 +711,7 @@ This annotates a hibernate entity. It wraps all database calls using the Hiberna
 
 @TraceHibernateDatabase fields: 
 - String: name
-- Boolean: isEvent 
+- Boolean: isEvent (default false)
 
 
 ### Example Usage
@@ -735,7 +735,7 @@ public class SecondServiceApplication {
 
 
 ```java
-@TraceMethod(name="methodName", isEvent=False)
+@TraceMethod(name="methodName", isEvent=True)
 @GetMapping
 public String callSecondTracedMethod() {
 return "It's time to get a watch";
@@ -747,7 +747,7 @@ return "It's time to get a watch";
  
 
 ```java
-@TraceClass(name="className", isEvent=True)
+@TraceClass(name="className", isEvent=True, includeMethodName=True)
 @RestController
 public class SecondServiceController {
 
@@ -777,7 +777,7 @@ public class SecondServiceApplication {
 
 
 ```java
-@InjectTraceRestTemplate 
+@InjectTraceRestTemplate(isEvent=True)
 @SpringBootApplication
 public class SecondServiceApplication {
 
@@ -790,7 +790,7 @@ public class SecondServiceApplication {
 #### @TraceHibernateDatabaseCalls
 
 ```java
-@TraceDatabase(name="entityName") 
+@TraceHibernateDatabaseCalls(name="entityName") 
 @Entity
 public class Book {
  
