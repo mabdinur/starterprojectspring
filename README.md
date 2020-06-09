@@ -10,7 +10,7 @@ The [second section](#section-2-using-spring-handlers-and-interceptors) will bui
 
 The [third section](#section-3-instrumentation-using-opentelemetry-contrib-spring-in-progress) will walk you through the annotations and configurations defined in the opentelemetry-contrib-spring package. This section will equip you with new tools to streamline the step up and instrumentation of OpenTelemetry on Spring and Spring Boot applications. With these tools you will be able to setup distributed tracing with little to no changes to existing configurations and easily customize traces with minor additions to application code.  
 
-# Manual Instrumentation Starter Guide
+# Manual Instrumentation Guide
 
 A sample user journey for manual instrumentation can be found here [lightstep](https://docs.lightstep.com/otel/getting-started-java-SpringBoot). In section one and two, you will create two spring web services using Spring Boot. you will then trace the requests between these services using OpenTelemetry. Finally, you will discuss improvements that can be made to the process. These improvements will be shown in section three.
 
@@ -66,10 +66,29 @@ Add the dependencies below to enable OpenTelemetry in FirstService and SecondSer
 </dependency>
 ```
 
+### Gradle
+ 
+#### OpenTelemetry
+```gradle
+compile "io.opentelemetry:opentelemetry-api:0.2.0"
+compile "io.opentelemetry:opentelemetry-sdk:0.2.0"
+```
+
+#### LoggerExporter
+```gradle
+compile "io.opentelemetry:opentelemetry-exporters-logging:0.2.0"
+```
+
+#### JaegerExporter
+```gradle
+compile "io.opentelemetry:opentelemetry-exporters-jaeger:0.2.0"
+compile "io.grpc:grpc-protobuf:1.27.2"
+compile "io.grpc:grpc-netty:1.27.2"
+```
+
 ### Tracer Configuration
 
 To enable tracing in your OpenTelemetry project configure a tracer bean. This bean will be autowired to controllers in your application to create and propagate spans. If you plan to use a trace exporter remember to include it in this configuration file. A sample OpenTelemetry configuration using LogExporter is shown below: 
-
 
 ```java
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
@@ -303,7 +322,7 @@ public class SecondServiceController {
 
 To view traces on the Jaeger UI, deploy the Jaeger Exporter on localhost by runnning the command `docker run --rm -it --network=host jaegertracing/all-in-one` in terminal. Then send a sample request to the FirstService service. 
 
-**Note: The default port for the Apache Tomcat is 8080. On localhost both FirstService and SecondService services will attempt to run on this port raising an error. To avoid this add `server.port=8081` to the resources/application.properties file. Ensure the port specified corresponds to port referenced by FirstServiceController.SS_URL. **
+***Note: The default port for the Apache Tomcat is 8080. On localhost both FirstService and SecondService services will attempt to run on this port raising an error. To avoid this add `server.port=8081` to the resources/application.properties file. Ensure the port specified corresponds to port referenced by FirstServiceController.SS_URL. ***
  
 Run FirstService and SecondService from command line or using an IDE. The end point of for FirstService should be localhost:8080/message and  localhost:8081/time for SecondService. Entering `localhost:8080/time` in a browser should call FirstService and then SecondService, creating a trace.
  
