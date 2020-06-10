@@ -12,7 +12,7 @@ The [third section](#section-3-instrumentation-using-opentelemetry-contrib-sprin
 
 # Manual Instrumentation Guide
 
-A sample user journey for manual instrumentation can be found here [lightstep](https://docs.lightstep.com/otel/getting-started-java-SpringBoot). In section one and two, we will create two spring web services using Spring Boot. We will then trace the requests between these services using OpenTelemetry. Finally, we will discuss improvements that can be made to this process. These improvements will be shown in section three.
+In section one and two, we will create two spring web services using Spring Boot. We will then trace the requests between these services using OpenTelemetry. Finally, we will discuss improvements that can be made to this process. These improvements will be shown in section three.
 
 ## Create two Spring Projects
 
@@ -143,7 +143,7 @@ OpenTelemetrySdk.getTracerFactory().addSpanProcessor(jaegerProcessor);
      
 ### Project Background
 
-Here you will create rest controllers for FirstService and SecondService.
+Here we will create rest controllers for FirstService and SecondService.
 FirstService will send a GET request to SecondService to retrieve the current time. FirstService will append a message to SecondSerivce's time and then return this value to the client. 
 
 ## Section 1: Manual Instrumentation with Java SDK
@@ -325,9 +325,9 @@ public class SecondServiceController {
 
 ### Run FirstService and SecondService:
 
-***Ensure either LogExporter or Jaeger is configured in the OtelConfig.java file. For LogExporter you can view traces on your console.*** 
+***To view your distributed traces ensure either LogExporter or Jaeger is configured in the OtelConfig.java file*** 
 
-To view traces on the Jaeger UI, deploy the Jaeger Exporter on localhost by running the command in terminal:
+To view traces on the Jaeger UI, deploy a Jaeger Exporter on localhost by running the command in terminal:
 
 `docker run --rm -it --network=host jaegertracing/all-in-one` 
 
@@ -341,13 +341,13 @@ Run FirstService and SecondService from command line or using an IDE. The end po
 
 ***Note: The default port for the Apache Tomcat is 8080. On localhost both FirstService and SecondService services will attempt to run on this port raising an error. To avoid this add `server.port=8081` to the resources/application.properties file. Ensure the port specified corresponds to port referenced by FirstServiceController.SS_URL. ***
 
-Congrats, you created a distributed service with OpenTelemetry!
+Congrats, we just created a distributed service with OpenTelemetry!
 
 ## Section 2: Using Spring Handlers and Interceptors
 
-Name one FirstService and other, SecondService. Add the required OpenTelemetry dependencies, configurations, and your chosen exporter to both projects. In this section, you will implement the Spring HandlerInerceptor interface to wrap all requests to FirstService and Second Service controllers in a span. 
+Name one FirstService and other, SecondService. Add the required OpenTelemetry dependencies, configurations, and your chosen exporter to both projects. In this section, we will implement the Spring HandlerInerceptor interface to wrap all requests to FirstService and Second Service controllers in a span. 
 
-You will also use the RestTemplate HTTP client to send requests from FirstService to SecondService. To propagate the trace in this request you will also implement the ClientHttpRequestInterceptor interface. This implementation is only required for FirstService since this will be the only project that sends outbound requests (SecondService only receive requests from an external service). 
+We will also use the RestTemplate HTTP client to send requests from FirstService to SecondService. To propagate the trace in this request we will also implement the ClientHttpRequestInterceptor interface. This implementation is only required for FirstService since this will be the only project that sends outbound requests (SecondService only receive requests from an external service). 
 
 ### Setup FirstService and SecondService:
 
@@ -374,7 +374,7 @@ public class SecondServiceApplication {
 }
 ```
 
-Add the rest controller below to your SecondService project. This controller will return a string when SecondServiceController.secondTracedMethod is called :
+Add the rest controller below to your SecondService project. This controller will return a string when SecondServiceController.secondTracedMethod is called:
 
 ```java
 import org.springframework.beans.factory.annotation.Autowired;
@@ -549,13 +549,13 @@ public class FirstServiceController {
 }
 ```
 
-As seen in the setup of SecondService, create implement the TraceInterceptor interface to wrap requests to the SecondServiceController in a span. Then register this new handler by extending the HandlerInterceptor. In effect, you will be taking a copy of the InterceptorConfig.java and ControllerTraceInterceptor.java defined in SecondService and adding it to FirstService. These files are referenced [here](#create-controller-interceptor).
+As seen in the setup of SecondService, create implement the TraceInterceptor interface to wrap requests to the SecondServiceController in a span. Then register this new handler by extending the HandlerInterceptor. In effect, we will be taking a copy of the InterceptorConfig.java and ControllerTraceInterceptor.java defined in SecondService and adding it to FirstService. These files are referenced [here](#create-controller-interceptor).
 
 #### Create Client Http Request Interceptor
 
-Next, you will configure the ClientHttpRequestInterceptor to intercept all client HTTP requests made using RestTemplate.
+Next, we will configure the ClientHttpRequestInterceptor to intercept all client HTTP requests made using RestTemplate.
 
-To propagate the span context from FirstService to SecondService you must inject trace id and trace state into the outgoing request header. In section 1 this was done using the helper class HttpUtils. In this section, you will implement the ClientHttpRequestInterceptor interface and register this interceptor in our application. 
+To propagate the span context from FirstService to SecondService we must inject the trace id and trace state into the outgoing request header. In section 1 this was done using the helper class HttpUtils. In this section, we will implement the ClientHttpRequestInterceptor interface and register this interceptor in our application. 
 
 Include the two classes below to your FirstService project to add this functionality:
 
@@ -642,9 +642,9 @@ public class RestClientConfig {
 
 By default Spring Boot runs a Tomcat server on the port 8080. This tutorial assumes FirstService runs on the default port (8080) and SecondService runs on port 8081. This is because we hard coded the SecondService end point in FirstServiceController.SS_URL. To run SecondServiceApplication on port 8081 include `server.port=8081` in the resources/application.properties file. 
 
-Run both the FirstService and SecondService projects in terminal or using an IDE (ex. Eclipse). The end point for FirstService should be `http://localhost:8080/message` and `http://localhost:8081/time` for SecondService. Type both urls in a browser and ensure you get a Http.OK response. 
+Run both the FirstService and SecondService projects in terminal or using an IDE (ex. Eclipse). The end point for FirstService should be `http://localhost:8080/message` and `http://localhost:8081/time` for SecondService. Type both urls in a browser and ensure you receive a 200 response. 
 
-To visualize this trace add a trace exporter to one or both of your applications. Instructions on how to setup LogExporter and Jaeger can be seen in section 1. You can also follow your trace using a debugger and tracking the request headers. 
+To visualize this trace add a trace exporter to one or both of your applications. Instructions on how to setup LogExporter and Jaeger can be seen [above](#tracer-configuration). 
 
 To create a distributed trace enter `http:\\localhost:8080/time` in a browser. This trace should include a span for FirstService and a span for SecondService.
 
