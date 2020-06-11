@@ -12,7 +12,7 @@ The [third section](#section-3-instrumentation-using-opentelemetry-contrib-sprin
 
 # Manual Instrumentation Guide
 
-In section one and two, we will create two spring web services using Spring Boot. We will then trace the requests between these services using OpenTelemetry. Finally, we will discuss improvements that can be made to this process. These improvements will be shown in section three.
+In this guide we will be using a running example. In section one and two, we will create two spring web services using Spring Boot. We will then trace the requests between these services using OpenTelemetry. Finally, in section three we will explore tools in the opentelemetry-contrib-spring package which can improve this process.
 
 ## Create two Spring Projects
 
@@ -20,7 +20,7 @@ Using the [spring project initializer](https://start.spring.io/), we will create
 
 ## Setup for Section 1 and Section 2
 
-Add the dependencies below to enable OpenTelemetry in FirstService and SecondService. The Jaeger and LoggerExporter packages are recommended but not required for this section. 
+Add the dependencies below to enable OpenTelemetry in FirstService and SecondService. The Jaeger and LoggerExporter packages are recommended but not required for this section. As of May 2020, only JaegerExporter and LoggingExporter are supported by opentelemetry-java. These OpenTelemetry exporters are used to track traces on different platforms. Feel free to use whatever exporter you are most comfortable with. 
 
 ### Maven
  
@@ -88,7 +88,7 @@ compile "io.grpc:grpc-netty:1.27.2"
 
 ### Tracer Configuration
 
-To enable tracing in your OpenTelemetry project configure a tracer bean. This bean will be autowired to controllers to create and propagate spans. If you plan to use a trace exporter remember to also include it in this configuration file. 
+To enable tracing in your OpenTelemetry project configure a TracerBean. This bean will be autowired to controllers to create and propagate spans. If you plan to use a trace exporter remember to also include it in this configuration file. In [section 3](#section-3-instrumentation-using-opentelemetry-contrib-spring-in-progress) we will provide an [annotation](#configtracer) to provide this functionality.
 
 A sample OpenTelemetry configuration using LogExporter is shown below: 
 
