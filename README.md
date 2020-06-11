@@ -20,7 +20,7 @@ Using the [spring project initializer](https://start.spring.io/), we will create
 
 ## Setup for Section 1 and Section 2
 
-Add the dependencies below to enable OpenTelemetry in FirstService and SecondService. The Jaeger and LoggerExporter packages are recommended but not required for this section. As of May 2020, only JaegerExporter and LoggingExporter are supported by opentelemetry-java. These OpenTelemetry exporters are used to track traces on different platforms. Feel free to use whatever exporter you are most comfortable with. 
+Add the dependencies below to enable OpenTelemetry in FirstService and SecondService. The Jaeger and LoggerExporter packages are recommended for exporting traces but are not required for this section. As of May 2020, Jaeger, Zipkin, OTLP, and Logging exporters are supported by opentelemetry-java. Feel free to use whatever exporter you are most comfortable with. 
 
 ### Maven
  
@@ -730,6 +730,7 @@ This annotation initializes a global tracer for your application. It will create
 
 @ConfigTracer fields:
 - String: tracerName
+- Boolean: includeLoggingExporter (default false)
 
 #### @TraceMethod  
 
@@ -752,8 +753,8 @@ This annotates a class definition. It wraps all public methods in a span or logs
 
 This annotates a class definition with @RestController annotation. It creates a new span for rest controllers when a request is received. 
 
-No @TraceRestControllers fields: 
-- Default span name: the name of the class
+@TraceRestControllers fields: 
+- Boolean: includeLoggingExporter (default true)
 
 #### @InjectTraceRestTemplate
 
@@ -775,7 +776,7 @@ This annotates a hibernate entity. It wraps all database calls using the Hiberna
 #### @ConfigTracer
 
 ```java
-ConfigTracer(name = "tracerName")
+ConfigTracer(name = "tracerName", includeLoggingExporter=False)
 @SpringBootApplication
 public class SecondServiceApplication {
 
@@ -816,7 +817,7 @@ public class SecondServiceController {
 
 
 ```java
-@TraceRestControllers
+@TraceRestControllers(includeLoggingExporter=False)
 @SpringBootApplication
 public class SecondServiceApplication {
 
