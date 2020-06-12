@@ -4,21 +4,21 @@
 
 This package streamlines the manual instrumentation process of OpenTelemetry for [Spring](https://spring.io/projects/spring-framework) and [Spring Boot](https://spring.io/projects/spring-boot) applications. It will enable you to add traces to requests and database calls with minimal changes to application code. This package will not fully automate your OpenTelemetry instrumentation, instead, it will provide you with better tools to instrument your own code. 
 
-The [first section](#section-1-manual-instrumentation-with-java-sdk) will walk you through span creation and propagation using the OpenTelemetry Java API and [Spring's RestTemplate Http Web Client](https://spring.io/guides/gs/consuming-rest/). This approach will use the "vanilla" OpenTelemetry API to make explicit tracing calls within an application's controller. 
+The [first section](#manual-instrumentation-with-java-sdk) will walk you through span creation and propagation using the OpenTelemetry Java API and [Spring's RestTemplate Http Web Client](https://spring.io/guides/gs/consuming-rest/). This approach will use the "vanilla" OpenTelemetry API to make explicit tracing calls within an application's controller. 
 
-The [second section](#section-2-using-spring-handlers-and-interceptors) will build on the first. It will walk you through implementing spring-web handler and interceptor interfaces to create traces with minimal changes to existing application code. Using the OpenTelemetry API, this approach involves copy and pasting files and a significant amount of manual configurations. 
+The [second section](#manual-instrumentation-using-handlers-and-interceptors) will build on the first. It will walk you through implementing spring-web handler and interceptor interfaces to create traces with minimal changes to existing application code. Using the OpenTelemetry API, this approach involves copy and pasting files and a significant amount of manual configurations. 
 
-The [third section](#section-3-instrumentation-using-opentelemetry-contrib-spring-in-progress) will walk you through the annotations and configurations defined in the opentelemetry-contrib-spring package. This section will equip you with new tools to streamline the step up and instrumentation of OpenTelemetry on Spring and Spring Boot applications. With these tools you will be able to setup distributed tracing with little to no changes to existing configurations and easily customize traces with minor additions to application code.  
+The [third section](#instrumentation-using-opentelemetry-contrib-spring-in-progress) will walk you through the annotations and configurations defined in the opentelemetry-contrib-spring package. This section will equip you with new tools to streamline the step up and instrumentation of OpenTelemetry on Spring and Spring Boot applications. With these tools you will be able to setup distributed tracing with little to no changes to existing configurations and easily customize traces with minor additions to application code.  
+
+In this guide we will be using a running example. In section one and two, we will create two spring web services using Spring Boot. We will then trace the requests between these services using two different approaches. Finally, in section three we will explore tools in the opentelemetry-contrib-spring package which can improve this process.
 
 # Manual Instrumentation Guide
-
-In this guide we will be using a running example. In section one and two, we will create two spring web services using Spring Boot. We will then trace the requests between these services using OpenTelemetry. Finally, in section three we will explore tools in the opentelemetry-contrib-spring package which can improve this process.
 
 ## Create two Spring Projects
 
 Using the [spring project initializer](https://start.spring.io/), we will create two spring projects.  Name one project FirstService and the other SecondService. Make sure to select maven, Spring Boot 2.3, Java, and add the spring-web dependency. After downloading the two projects include the OpenTelemetry dependencies and configuration listed below. 
 
-## Setup for Section 1 and Section 2
+## Setup for Manual Instrumentation
 
 Add the dependencies below to enable OpenTelemetry in FirstService and SecondService. The Jaeger and LoggerExporter packages are recommended for exporting traces but are not required for this section. As of May 2020, Jaeger, Zipkin, OTLP, and Logging exporters are supported by opentelemetry-java. Feel free to use whatever exporter you are most comfortable with. 
 
@@ -88,7 +88,7 @@ compile "io.grpc:grpc-netty:1.27.2"
 
 ### Tracer Configuration
 
-To enable tracing in your OpenTelemetry project configure a TracerBean. This bean will be autowired to controllers to create and propagate spans. If you plan to use a trace exporter remember to also include it in this configuration file. In [section 3](#section-3-instrumentation-using-opentelemetry-contrib-spring-in-progress) we will provide an [annotation](#configtracer) to provide this functionality.
+To enable tracing in your OpenTelemetry project configure a TracerBean. This bean will be auto wired to controllers to create and propagate spans. If you plan to use a trace exporter remember to also include it in this configuration file. In [section 3](#instrumentation-using-opentelemetry-contrib-spring-in-progress) we will provide an [annotation](#configtracer) to provide this functionality.
 
 A sample OpenTelemetry configuration using LogExporter is shown below: 
 
@@ -111,7 +111,7 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 @Configuration
 @EnableAutoConfiguration(exclude = { DataSourceAutoConfiguration.class, HibernateJpaAutoConfiguration.class })
 public class OtelConfig {
-    private static final tracerName = "otel-example"	
+    private static final tracerName = "foo-tracer"; //TODO:
     @Bean
     public Tracer otelTracer() throws Exception {
 	final Tracer tracer = OpenTelemetry.getTracerFactory().get(tracerName);
@@ -146,13 +146,13 @@ OpenTelemetrySdk.getTracerFactory().addSpanProcessor(jaegerProcessor);
 Here we will create rest controllers for FirstService and SecondService.
 FirstService will send a GET request to SecondService to retrieve the current time. FirstService will append a message to SecondSerivce's time and then return this value to the client. 
 
-## Section 1: Manual Instrumentation with Java SDK
+## Manual Instrumentation with Java SDK
 
-### Add OpenTelemetry to FirstService and SecondService:
+### Add OpenTelemetry to FirstService and SecondService
 
-Required dependencies and configurations for FirstService and SecondService projects can be found [here](#setup-for-section-1-and-section-2).
+Required dependencies and configurations for FirstService and SecondService projects can be found [here](#setup-for-manual-instrumentation).
 
-### FirstService:
+### FirstService
 
 1. Ensure OpenTelemetry dependencies are included
 2. Ensure an OpenTelemetry Tracer is configured
@@ -267,7 +267,7 @@ public class HttpUtils {
   }
 }
 ```
-### SecondService:
+### SecondService
 
 1. Ensure OpenTelemetry dependencies are included
 2. Ensure an OpenTelemetry Tracer is configured
@@ -323,7 +323,7 @@ public class SecondServiceController {
 }
 ```
 
-### Run FirstService and SecondService:
+### Run FirstService and SecondService
 
 ***To view your distributed traces ensure either LogExporter or Jaeger is configured in the OtelConfig.java file*** 
 
@@ -343,19 +343,19 @@ Run FirstService and SecondService from command line or using an IDE. The end po
 
 Congrats, we just created a distributed service with OpenTelemetry!
 
-## Section 2: Using Spring Handlers and Interceptors
+## Manual Instrumentation using Handlers and Interceptors
 
 Name one FirstService and other, SecondService. Add the required OpenTelemetry dependencies, configurations, and your chosen exporter to both projects. In this section, we will implement the Spring HandlerInerceptor interface to wrap all requests to FirstService and Second Service controllers in a span. 
 
 We will also use the RestTemplate HTTP client to send requests from FirstService to SecondService. To propagate the trace in this request we will also implement the ClientHttpRequestInterceptor interface. This implementation is only required for FirstService since this will be the only project that sends outbound requests (SecondService only receive requests from an external service). 
 
-### Setup FirstService and SecondService:
+### Setup FirstService and SecondService
 
 Using the instructions [here](#create-two-spring-projects) create two spring projects. 
 
-Follow the instructions [here](#setup-for-section-1-and-section-2) to add the required dependencies and configurations.
+Follow the instructions [here](#setup-for-manual-instrumentation) to add the required dependencies and configurations.
 
-### SecondService:
+### SecondService
 
 Ensure the main method in SecondServiceApplication is defined. This will be the entry point to the SecondService project. This file should be created by the Spring Boot project initializer.
 
@@ -497,7 +497,7 @@ public class InterceptorConfig extends WebMvcConfigurationSupport {
 
 Now your SecondService application is complete. Create the FirstService application using the instructions below and then run your distributed service!
 
-### FirstService:
+### FirstService
 
 Ensure the main method in FirstServiceApplication is defined. This will be the entry point to the FirstService project. This file should be created by the Spring Boot project initializer.
 
@@ -702,7 +702,7 @@ Note: This data is read from a json file. Ingredient data is stored in [FoodVend
 
 6. Inspect trace on the Jaeger UI: `http://localhost:16686`
 
-## Section 3: Instrumentation using opentelemetry-contrib-spring (IN PROGRESS) 
+## Instrumentation using opentelemetry-contrib-spring (IN PROGRESS) 
 
 ### Dependencies
 
