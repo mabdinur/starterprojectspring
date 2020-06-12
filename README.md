@@ -29,13 +29,19 @@ Add the dependencies below to enable OpenTelemetry in `FirstService` and `Second
 <dependency>
 	<groupId>io.opentelemetry</groupId>
 	<artifactId>opentelemetry-api</artifactId>
-	<version>0.2.0</version>
+	<version>0.5.0</version>
 </dependency>
 <dependency>
 	<groupId>io.opentelemetry</groupId>
 	<artifactId>opentelemetry-sdk</artifactId>
-	<version>0.2.0</version>
+	<version>0.5.0</version>
 </dependency>	
+<dependency>
+    <groupId>io.grpc</groupId>
+    <artifactId>grpc-context</artifactId>
+    <version>1.24.0</version>
+</dependency>
+
 ```
 
 #### LoggerExporter
@@ -43,7 +49,7 @@ Add the dependencies below to enable OpenTelemetry in `FirstService` and `Second
 <dependency>
 	<groupId>io.opentelemetry</groupId>
 	<artifactId>opentelemetry-exporters-logging</artifactId>
-	<version>0.2.0</version>
+	<version>0.5.0</version>
 </dependency>
 ```
 
@@ -52,7 +58,7 @@ Add the dependencies below to enable OpenTelemetry in `FirstService` and `Second
 <dependency>
 	<groupId>io.opentelemetry</groupId>
 	<artifactId>opentelemetry-exporters-jaeger</artifactId>
-	<version>0.2.0</version>
+	<version>0.5.0</version>
 </dependency>
 <dependency>
 	<groupId>io.grpc</groupId>
@@ -70,18 +76,19 @@ Add the dependencies below to enable OpenTelemetry in `FirstService` and `Second
  
 #### OpenTelemetry
 ```gradle
-compile "io.opentelemetry:opentelemetry-api:0.2.0"
-compile "io.opentelemetry:opentelemetry-sdk:0.2.0"
+compile "io.opentelemetry:opentelemetry-api:0.5.0"
+compile "io.opentelemetry:opentelemetry-sdk:0.5.0"
+compile "io.grpc:grpc-context:1.24.0"
 ```
 
 #### LoggerExporter
 ```gradle
-compile "io.opentelemetry:opentelemetry-exporters-logging:0.2.0"
+compile "io.opentelemetry:opentelemetry-exporters-logging:0.5.0"
 ```
 
 #### JaegerExporter
 ```gradle
-compile "io.opentelemetry:opentelemetry-exporters-jaeger:0.2.0"
+compile "io.opentelemetry:opentelemetry-exporters-jaeger:0.5.0"
 compile "io.grpc:grpc-protobuf:1.27.2"
 compile "io.grpc:grpc-netty:1.27.2"
 ```
@@ -93,35 +100,30 @@ To enable tracing in your OpenTelemetry project configure a Tracer Bean. This be
 A sample OpenTelemetry configuration using LogExporter is shown below: 
 
 ```java
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import io.grpc.ManagedChannelBuilder;
 import io.opentelemetry.OpenTelemetry;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.trace.SpanProcessor;
-import io.opentelemetry.sdk.trace.export.SimpleSpansProcessor;
+import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import io.opentelemetry.trace.Tracer;
-
+import io.opentelemetry.exporters.jaeger.JaegerGrpcSpanExporter;
 import io.opentelemetry.exporters.logging.*;
 
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-
 @Configuration
-@EnableAutoConfiguration(exclude = { DataSourceAutoConfiguration.class, HibernateJpaAutoConfiguration.class })
 public class OtelConfig {
-    private static final tracerName = "foo-tracer"; //TODO:
-    @Bean
-    public Tracer otelTracer() throws Exception {
-	final Tracer tracer = OpenTelemetry.getTracerFactory().get(tracerName);
+  private static tracerName = "foo"; \\TODO:
+  @Bean
+  public Tracer otelTracer() throws Exception {
+    final Tracer tracer = OpenTelemetry.getTracer(tracerName);
 
-	SpanProcessor logProcessor = SimpleSpansProcessor.newBuilder(new LoggingExporter()).build();
-
-	OpenTelemetrySdk.getTracerFactory().addSpanProcessor(logProcessor);
-
-	return tracer;
-    }
+    SpanProcessor logProcessor = SimpleSpanProcessor.newBuilder(new LoggingSpanExporter()).build();
+    OpenTelemetrySdk.getTracerProvider().addSpanProcessor(logProcessor);
+    
+    return tracer;
+  }
 }
 ```
 
@@ -131,14 +133,13 @@ The file above configures an OpenTelemetry tracer and a span processor. The span
 Sample configuration for a Jaeger Exporter:
 
 ```java
-//import io.grpc.ManagedChannelBuilder;
-//import io.opentelemetry.exporters.jaeger.JaegerGrpcSpanExporter;
 
-SpanProcessor jaegerProcessor = SimpleSpansProcessor.newBuilder(JaegerGrpcSpanExporter.newBuilder()
-	.setServiceName("otel_FirstService")
-	.setChannel(ManagedChannelBuilder.forAddress("localhost", 14250).usePlaintext().build()).build())
-	.build();
-OpenTelemetrySdk.getTracerFactory().addSpanProcessor(jaegerProcessor);
+SpanProcessor jaegerProcessor = SimpleSpanProcessor
+        .newBuilder(JaegerGrpcSpanExporter.newBuilder().setServiceName(tracerName)
+            .setChannel(ManagedChannelBuilder.forAddress("localhost", 14250).usePlaintext().build())
+            .build())
+        .build();
+OpenTelemetrySdk.getTracerProvider().addSpanProcessor(jaegerProcessor);
 ```
      
 ### Project Background
@@ -310,7 +311,7 @@ public class SecondServiceController {
 
   @GetMapping
   public String callSecondTracedMethod() {
-    Span span = tracer.spanBuilder("ingredient").startSpan();
+    Span span = tracer.spanBuilder("time").startSpan();
     span.addEvent("SecondServiceController Entered");
     span.setAttribute("what.am.i", "Tu es une legume");
 
@@ -406,6 +407,8 @@ Add the class below to wrap all requests to the SecondServiceController in a spa
 The preHandle method starts a span for each request. The postHandle method closes the span and adds the span context to the response header. This implementation is shown below:   
 
 ```java
+import java.util.logging.Logger;
+
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -413,14 +416,30 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.ModelAndView;
-
+import io.grpc.Context;
+import io.opentelemetry.OpenTelemetry;
 import io.opentelemetry.context.propagation.HttpTextFormat;
 import io.opentelemetry.trace.Span;
-import io.opentelemetry.trace.SpanContext;
 import io.opentelemetry.trace.Tracer;
+import io.opentelemetry.trace.TracingContextUtils;
 
 @Component
 public class ControllerTraceInterceptor implements HandlerInterceptor {
+
+  private static HttpTextFormat.Getter<HttpServletRequest> getter =
+      new HttpTextFormat.Getter<HttpServletRequest>() {
+        public String get(HttpServletRequest req, String key) {
+          return req.getHeader(key);
+        }
+      };
+
+  private static HttpTextFormat.Setter<HttpServletResponse> setter =
+      new HttpTextFormat.Setter<HttpServletResponse>() {
+        @Override
+        public void set(HttpServletResponse response, String key, String value) {
+          response.addHeader(key, value);
+        }
+      };
 
   @Autowired
   private Tracer tracer;
@@ -428,21 +447,19 @@ public class ControllerTraceInterceptor implements HandlerInterceptor {
   @Override
   public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
       throws Exception {
-    HttpTextFormat<SpanContext> textFormat = tracer.getHttpTextFormat();
     Span span;
     try {
 
-      SpanContext spanContext =
-          textFormat.extract(request, new HttpTextFormat.Getter<HttpServletRequest>() {
-            @Override
-            public String get(HttpServletRequest req, String key) {
-              return req.getHeader(key);
-            }
-          });
-      span = tracer.spanBuilder(request.getRequestURI()).setParent(spanContext).startSpan();
+      Context context = OpenTelemetry.getPropagators().getHttpTextFormat()
+          .extract(Context.current(), request, getter);
+
+      span = tracer.spanBuilder(request.getRequestURI())
+          .setParent(TracingContextUtils.getSpan(context)).startSpan();
       span.setAttribute("handler", "pre");
     } catch (Exception e) {
       span = tracer.spanBuilder(request.getRequestURI()).startSpan();
+      span.setAttribute("handler", "pre");
+
       span.addEvent(e.toString());
       span.setAttribute("error", true);
     }
@@ -455,16 +472,9 @@ public class ControllerTraceInterceptor implements HandlerInterceptor {
   public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler,
       ModelAndView modelAndView) throws Exception {
 
-    HttpTextFormat<SpanContext> textFormat = tracer.getHttpTextFormat();
     Span currentSpan = tracer.getCurrentSpan();
     currentSpan.setAttribute("handler", "post");
-    textFormat.inject(currentSpan.getContext(), response,
-        new HttpTextFormat.Setter<HttpServletResponse>() {
-          @Override
-          public void put(HttpServletResponse response, String key, String value) {
-            response.addHeader(key, value);
-          }
-        });
+    OpenTelemetry.getPropagators().getHttpTextFormat().inject(Context.current(), response, setter);
     currentSpan.end();
   }
 
@@ -472,6 +482,7 @@ public class ControllerTraceInterceptor implements HandlerInterceptor {
   public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
       Object handler, Exception exception) throws Exception {}
 }
+
 ```
 
 The final step is to register an instance of the ControllerTraceInterceptor:
@@ -561,8 +572,11 @@ Include the two classes below to your FirstService project to add this functiona
 
 
 ```java
-import java.io.IOException;
 
+import java.io.IOException;
+import java.util.logging.Logger;
+
+import io.grpc.Context;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpRequest;
 
@@ -570,17 +584,27 @@ import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.stereotype.Component;
-
+import io.opentelemetry.OpenTelemetry;
 import io.opentelemetry.context.propagation.HttpTextFormat;
 import io.opentelemetry.trace.Span;
-import io.opentelemetry.trace.SpanContext;
 import io.opentelemetry.trace.Tracer;
 
 @Component
 public class RestTemplateHeaderModifierInterceptor implements ClientHttpRequestInterceptor {
 
+  private static final Logger LOG = Logger.getLogger(TraceInterceptor.class.getName());
+
   @Autowired
   private Tracer tracer;
+
+  private static HttpTextFormat.Setter<HttpRequest> setter =
+      new HttpTextFormat.Setter<HttpRequest>() {
+        @Override
+        public void set(HttpRequest carrier, String key, String value) {
+          carrier.getHeaders().set(key, value);
+        }
+      };
+
 
   @Override
   public ClientHttpResponse intercept(HttpRequest request, byte[] body,
@@ -588,22 +612,16 @@ public class RestTemplateHeaderModifierInterceptor implements ClientHttpRequestI
 
     Span currentSpan = tracer.getCurrentSpan();
     currentSpan.setAttribute("client_http", "inject");
-    currentSpan.addEvent("Internal request sent to food service");
+    currentSpan.addEvent("Request sent to SecondService");
 
-    HttpTextFormat<SpanContext> textFormat = tracer.getHttpTextFormat();
-
-    textFormat.inject(currentSpan.getContext(), request, new HttpTextFormat.Setter<HttpRequest>() {
-      @Override
-      public void put(HttpRequest request, String key, String value) {
-        request.getHeaders().set(key, value);
-      }
-    });
+    OpenTelemetry.getPropagators().getHttpTextFormat().inject(Context.current(), request, setter);
 
     ClientHttpResponse response = execution.execute(request, body);
 
     return response;
   }
 }
+
 ```
 
 ```java
