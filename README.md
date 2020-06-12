@@ -16,11 +16,11 @@ In this guide we will be using a running example. In section one and two, we wil
 
 ## Create two Spring Projects
 
-Using the [spring project initializer](https://start.spring.io/), we will create two spring projects.  Name one project FirstService and the other SecondService. Make sure to select maven, Spring Boot 2.3, Java, and add the spring-web dependency. After downloading the two projects include the OpenTelemetry dependencies and configuration listed below. 
+Using the [spring project initializer](https://start.spring.io/), we will create two spring projects.  Name one project `FirstService` and the other `SecondService`. Make sure to select maven, Spring Boot 2.3, Java, and add the spring-web dependency. After downloading the two projects include the OpenTelemetry dependencies and configuration listed below. 
 
 ## Setup for Manual Instrumentation
 
-Add the dependencies below to enable OpenTelemetry in FirstService and SecondService. The Jaeger and LoggerExporter packages are recommended for exporting traces but are not required for this section. As of May 2020, Jaeger, Zipkin, OTLP, and Logging exporters are supported by opentelemetry-java. Feel free to use whatever exporter you are most comfortable with. 
+Add the dependencies below to enable OpenTelemetry in `FirstService` and `SecondService`. The Jaeger and LoggerExporter packages are recommended for exporting traces but are not required for this section. As of May 2020, Jaeger, Zipkin, OTLP, and Logging exporters are supported by opentelemetry-java. Feel free to use whatever exporter you are most comfortable with. 
 
 ### Maven
  
@@ -88,7 +88,7 @@ compile "io.grpc:grpc-netty:1.27.2"
 
 ### Tracer Configuration
 
-To enable tracing in your OpenTelemetry project configure a TracerBean. This bean will be auto wired to controllers to create and propagate spans. If you plan to use a trace exporter remember to also include it in this configuration file. In [section 3](#instrumentation-using-opentelemetry-contrib-spring-in-progress) we will provide an [annotation](#configtracer) to provide this functionality.
+To enable tracing in your OpenTelemetry project configure a Tracer Bean. This bean will be auto wired to controllers to create and propagate spans. This can be seen in the `Tracer otelTracer()` method below. If you plan to use a trace exporter remember to also include it in this configuration file. In [section 3](#instrumentation-using-opentelemetry-contrib-spring-in-progress) we will use an [annotation](#configtracer) to set up this configuration.
 
 A sample OpenTelemetry configuration using LogExporter is shown below: 
 
@@ -126,7 +126,7 @@ public class OtelConfig {
 ```
 
 
-The file above configures an OpenTelemetry tracer and a span processor. The span processor builds a Logging Exporter which will output spans to the console. Similarly, one could add another exporter, such as the JaegerExporter, to visualize traces on a different back-end. Similar to how the LoggingExporter is configured, a Jaeger configuration can be added to the OtelConfig class above. 
+The file above configures an OpenTelemetry tracer and a span processor. The span processor builds a log exporter which will output spans to the console. Similarly, one could add another exporter, such as the `JaegerExporter`, to visualize traces on a different back-end. Similar to how the `LoggingExporter` is configured, a Jaeger configuration can be added to the `OtelConfig` class above. 
 
 Sample configuration for a Jaeger Exporter:
 
@@ -143,8 +143,8 @@ OpenTelemetrySdk.getTracerFactory().addSpanProcessor(jaegerProcessor);
      
 ### Project Background
 
-Here we will create rest controllers for FirstService and SecondService.
-FirstService will send a GET request to SecondService to retrieve the current time. FirstService will append a message to SecondSerivce's time and then return this value to the client. 
+Here we will create rest controllers for `FirstService` and `SecondService`.
+`FirstService` will send a GET request to `SecondService` to retrieve the current time. After this request is resolved, `FirstService` then will append a message to time and return a string to the client. 
 
 ## Manual Instrumentation with Java SDK
 
@@ -206,7 +206,7 @@ public class FirstServiceController {
     } catch (Exception e) {
       span.setAttribute("error", e.toString());
       span.setAttribute("error", true);
-      return "ERORR: I can't tell the time";
+      return "ERROR: I can't tell the time";
     } finally {
       span.end();
     }
@@ -214,9 +214,9 @@ public class FirstServiceController {
 }
 ```
 
-6. Configure HttpUtils.callEndpoint to inject span context into request. This is key to propagate the trace to the SecondService
+6. Configure `HttpUtils.callEndpoint` to inject span context into request. This is key to propagate the trace to the SecondService
 
-HttpUtils is a helper class that injects the current span context into outgoing requests. This involves adding the tracer id and the trace-state to a request header. For this example, I used RestTemplate to send requests from FirstService to SecondService. A similar approach can be used with popular Java Web Clients such as okhttp and apache http client. The key to this implementation is to override the put method in HttpTextFormat.Setter<?> to handle your request format. HttpTextFormat.inject will use this setter to set traceparent and tracestate headers in your requests. These values will be used to propagate your span context to external services.
+HttpUtils is a helper class that injects the current span context into outgoing requests. This involves adding the tracer id and the trace-state to a request header. For this example, I used `RestTemplate` to send requests from `FirstService` to `SecondService`. A similar approach can be used with popular Java Web Clients such as [okhttp](https://square.github.io/okhttp/) and [apache http client](https://www.tutorialspoint.com/apache_httpclient/apache_httpclient_quick_guide.htm). The key to this implementation is to override the put method in `HttpTextFormat.Setter<?>` to handle your request format. `HttpTextFormat.inject` will use this setter to set `traceparent` and `tracestate` headers in your requests. These values will be used to propagate your span context to external services.
 
 ```java
 import org.springframework.beans.factory.annotation.Autowired;
