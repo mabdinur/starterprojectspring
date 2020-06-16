@@ -6,9 +6,9 @@ This package streamlines the manual instrumentation process of OpenTelemetry for
 
 The [first section](#manual-instrumentation-with-java-sdk) will walk you through span creation and propagation using the OpenTelemetry Java API and [Spring's RestTemplate Http Web Client](https://spring.io/guides/gs/consuming-rest/). This approach will use the "vanilla" OpenTelemetry API to make explicit tracing calls within an application's controller. 
 
-The [second section](#manual-instrumentation-using-handlers-and-interceptors) will build on the first. It will walk you through implementing spring-web handler and interceptor interfaces to create traces with minimal changes to existing application code. Using the OpenTelemetry API, this approach involves copy and pasting files and a significant amount of manual configurations. 
+The [second section](#manual-instrumentation-using-handlers-and-interceptors)  will build on the first. It will walk you through implementing spring-web handler and interceptor interfaces to create traces with minimal changes to existing application code. Using the OpenTelemetry API, this approach involves copy and pasting files and a significant amount of manual configurations. 
 
-The [third section](#instrumentation-using-opentelemetry-contrib-spring-in-progress) will walk you through the annotations and configurations defined in the opentelemetry-contrib-spring package. This section will equip you with new tools to streamline the step up and instrumentation of OpenTelemetry on Spring and Spring Boot applications. With these tools you will be able to setup distributed tracing with little to no changes to existing configurations and easily customize traces with minor additions to application code.   
+The [third section](#instrumentation-using-opentelemetry-contrib-spring-in-progress) will walk you through the annotations and configurations defined in the opentelemetry-instrumentation-spring package. This section will equip you with new tools to streamline the setup and instrumentation of OpenTelemetry on Spring and Spring Boot applications. With these tools you will be able to setup distributed tracing with little to no changes to existing configurations and easily customize traces with minor additions to application code.
 
 In this guide we will be using a running example. In section one and two, we will create two spring web services using Spring Boot. We will then trace the requests between these services using two different approaches. Finally, in section three we will explore tools in the opentelemetry-instrumentation-spring package which can improve this process.
 
@@ -16,7 +16,7 @@ In this guide we will be using a running example. In section one and two, we wil
 
 ## Create two Spring Projects
 
-Using the [spring project initializer](https://start.spring.io/), we will create two spring projects.   Name one project `FirstService` and the other `SecondService`. Make sure to select maven, Spring Boot 2.3, Java, and add the spring-web dependency. After downloading the two projects include the OpenTelemetry dependencies and configuration listed below. 
+Using the [spring project initializer](https://start.spring.io/), we will create two spring projects.  Name one project `FirstService` and the other `SecondService`. Make sure to select maven, Spring Boot 2.3, Java, and add the spring-web dependency. After downloading the two projects include the OpenTelemetry dependencies and configuration listed below. 
 
 ## Setup for Manual Instrumentation
 
@@ -37,9 +37,9 @@ Add the dependencies below to enable OpenTelemetry in `FirstService` and `Second
    <version>0.5.0</version>
 </dependency>   
 <dependency>
-      <groupId>io.grpc</groupId>
-      <artifactId>grpc-context</artifactId>
-      <version>1.24.0</version>
+   <groupId>io.grpc</groupId>
+   <artifactId>grpc-context</artifactId>
+   <version>1.24.0</version>
 </dependency>
 
 ```
@@ -95,9 +95,9 @@ compile "io.grpc:grpc-netty:1.27.2"
 
 ### Tracer Configuration
 
-To enable tracing in your OpenTelemetry project configure a Tracer Bean. This bean will be auto wired to controllers to create and propagate spans. This can be seen in the `Tracer otelTracer()` method below. If you plan to use a trace exporter remember to also include it in this configuration class. In [section 3](#instrumentation-using-opentelemetry-contrib-spring-in-progress) we will use an [annotation](#configtracer) to set up this configuration.
+To enable tracing in your OpenTelemetry project configure a Tracer Bean. This bean will be auto wired to controllers to create and propagate spans. This can be seen in the `Tracer otelTracer()` method below. If you plan to use a trace exporter remember to also include it in this configuration class. In section 3 we will use an annotation to set up this configuration.
 
-A sample OpenTelemetry configuration using LogExporter is shown below: 
+A sample OpenTelemetry configuration using LoggingExporter is shown below: 
 
 ```java
 import org.springframework.context.annotation.Bean;
@@ -194,7 +194,7 @@ public class FirstServiceController {
    @Autowired
    HttpUtils httpUtils;
 
-   private static String SecondServiceUrl = "http://localhost:8081/time";
+   private static String secondServiceUrl = "http://localhost:8081/time";
 
    @GetMapping
    public String firstTracedMethod() {
@@ -203,7 +203,7 @@ public class FirstServiceController {
       span.setAttribute("what.are.you", "Je suis attribute");
 
       try (Scope scope = tracer.withSpan(span)) {
-         return "Second Service says: " + httpUtils.callEndpoint(SecondServiceUrl);
+         return "Second Service says: " + httpUtils.callEndpoint(secondServiceUrl);
       } catch (Exception e) {
          span.addEvent(e.toString());
          span.setAttribute("error", true);
@@ -239,16 +239,17 @@ import io.opentelemetry.trace.Tracer;
 @Component
 public class HttpUtils {
 
-   @Autowired
-   private Tracer tracer;
-
-   private HttpTextFormat<SpanContext> textFormat;
-   private HttpTextFormat.Setter<HttpHeaders> setter = new HttpTextFormat.Setter<HttpHeaders>() {
+   private static final HttpTextFormat.Setter<HttpHeaders> setter = new HttpTextFormat.Setter<HttpHeaders>() {
          @Override
          public void set(HttpHeaders headers, String key, String value) {
             headers.set(key, value);
          }
       };
+      
+   @Autowired
+   private Tracer tracer;
+
+   private HttpTextFormat<SpanContext> textFormat;
 
    public HttpUtils(Tracer tracer) {
       textFormat = tracer.getHttpTextFormat();
@@ -275,7 +276,7 @@ public class HttpUtils {
 2. Ensure an OpenTelemetry Tracer is configured
 3. Ensure a Spring Boot main class was created by the Spring initializer
 
-   
+
 ```java
 import java.io.IOException;
 
@@ -337,11 +338,9 @@ After running Jaeger locally, navigate to the url below. Make sure to refresh th
 
 `http://localhost:16686`
 
-Run FirstService and SecondService from command line or using an IDE. The end point of interest for FirstService is `http://localhost:8080/message` and  `http://localhost:8081/time` for SecondService. Entering `localhost:8080/message` in a browser should call FirstService and then SecondService, creating a trace. To send a sample request enter the following in a browser of your choice:
+Run FirstService and SecondService from command line or using an IDE. The end point of interest for FirstService is `http://localhost:8080/message` and  `http://localhost:8081/time` for SecondService. Entering `localhost:8080/message` in a browser should call FirstService and then SecondService, creating a trace. 
 
-`http://localhost:8081/time`
-
-***Note: The default port for the Apache Tomcat is 8080. On localhost both FirstService and SecondService services will attempt to run on this port raising an error. To avoid this add `server.port=8081` to the resources/application.properties file. Ensure the port specified corresponds to port referenced by FirstServiceController.SecondServiceUrl. ***
+***Note: The default port for the Apache Tomcat is 8080. On localhost both FirstService and SecondService services will attempt to run on this port raising an error. To avoid this add `server.port=8081` to the resources/application.properties file. Ensure the port specified corresponds to port referenced by FirstServiceController.secondServiceUrl. ***
 
 Congrats, we just created a distributed service with OpenTelemetry!
 
@@ -727,14 +726,14 @@ The dependencies below are required to use these [features](#features-in-progres
 ```xml
  <dependency>
       <groupId>io.opentelemetry</groupId>
-      <artifactId>opentelemetry-contrib-spring</artifactId>
+      <artifactId>opentelemetry-instrumentation-spring</artifactId>
       <version>VERSION</version>
  </dependency>
 ```
 
 #### Gradle 
 ```gradle
-compile "io.opentelemetry:opentelemetry-contrib-spring:VERSION"
+compile "io.opentelemetry:opentelemetry-instrumentation-spring:VERSION"
 ```
 
 ### Features (IN PROGRESS)
