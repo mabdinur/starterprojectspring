@@ -8,7 +8,7 @@ The [first section](#manual-instrumentation-with-java-sdk) will walk you through
 
 The [second section](#manual-instrumentation-using-handlers-and-interceptors)  will build on the first. It will walk you through implementing spring-web handler and interceptor interfaces to create traces with minimal changes to existing application code. Using the OpenTelemetry API, this approach involves copy and pasting files and a significant amount of manual configurations. 
 
-The [third section](#instrumentation-using-opentelemetry-contrib-spring-in-progress) will walk you through the annotations and configurations defined in the opentelemetry-instrumentation-spring package. This section will equip you with new tools to streamline the setup and instrumentation of OpenTelemetry on Spring and Spring Boot applications. With these tools you will be able to setup distributed tracing with little to no changes to existing configurations and easily customize traces with minor additions to application code.
+The [third section](#instrumentation-using-opentelemetry-instrumentation-spring-in-progress) will walk you through the annotations and configurations defined in the opentelemetry-instrumentation-spring package. This section will equip you with new tools to streamline the setup and instrumentation of OpenTelemetry on Spring and Spring Boot applications. With these tools you will be able to setup distributed tracing with little to no changes to existing configurations and easily customize traces with minor additions to application code.
 
 In this guide we will be using a running example. In section one and two, we will create two spring web services using Spring Boot. We will then trace the requests between these services using two different approaches. Finally, in section three we will explore tools in the opentelemetry-instrumentation-spring package which can improve this process.
 
@@ -716,7 +716,7 @@ Note: This data is read from a json file. Ingredient data is stored in [FoodVend
 
 6. Inspect trace on the Jaeger UI: `http://localhost:16686`
 
-## Instrumentation using opentelemetry-contrib-spring (IN PROGRESS) 
+## Instrumentation using opentelemetry-instrumentation-spring (IN PROGRESS) 
 
 ### Dependencies
 
