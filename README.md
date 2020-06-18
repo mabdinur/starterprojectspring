@@ -662,13 +662,13 @@ To visualize this trace add a trace exporter to one or both of your applications
 
 To create a sample trace enter `localhost:8080/message` in a browser. This trace should include a span for FirstService and a span for SecondService.
 
-## Sample application with distributed tracing: otel-example 
+### Sample application with distributed tracing: otel-example 
 
 In the otel-example/ directory you can find 3 services (FoodFinder, FoodSupplier, and FoodVendor) which create a distrubted trace using techniques shown in section 2. In this example FoodFinder queries FoodSupplier for a list of vendors which carry an ingredient. Using the list of vendors FoodFinder then queries FoodVendor to retrieve a list of ingredient prices, quantity, and their corresponding vendor. This list of ingredient data is the returned to the client.
 
 FirstService is configured to run on port 8080, FoodSupplier on 8081, and FoodVendor on 8082.This example uses both the Jaeger and LogExporters. You can download the three services here: [FoodFinder](foodfinder), [FoodSupplier](foodsupplier_, and [FoodVendor](foodvendor). 
 
-### Setup
+#### Setup
 
 1. Download the three services
 2. Build and run these services on localhost using terminal or an IDE (ex. Eclipse)
@@ -724,29 +724,43 @@ The dependencies below are required to use these [features](#features-in-progres
 
 #### Maven
 ```xml
- <dependency>
+   <dependency>
       <groupId>io.opentelemetry</groupId>
       <artifactId>opentelemetry-instrumentation-spring</artifactId>
       <version>VERSION</version>
- </dependency>
+   </dependency>
+ 
+   <!-- spring aspects -->
+   <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-aspects</artifactId>
+      <version>SPRING_VERSION</version>
+      <scope>runtime</scope>
+   </dependency>
 ```
 
 #### Gradle 
 ```gradle
 compile "io.opentelemetry:opentelemetry-instrumentation-spring:VERSION"
+runtime 'org.springframework:spring-aspects:SPRING_VERSION'
 ```
 
 ### Features (IN PROGRESS)
 
-#### @ConfigTracer
+#### Initialize Tracer
 
-This annotation initializes a global tracer for your application. It will create a Tracer Object which can be injected as a dependency.
+This initialize a global tracer for your application. It will create a Tracer Object which can be injected as a dependency.
 
-@ConfigTracer fields:
-- String: tracerName
-- Boolean: includeLoggingExporter (default false)
+```xml
+<!-- global tracer -->
+   <bean id="tracer" class="io.opentelemetry.instrumentation.spring.OtelTracer" factory-method="getTracer/>
+      <!-- tracer name -->
+      <constructor-arg type="java.lang.String" value="otel-tracer-name"/>     <!-- include LoggingExporter() -->
+      <constructor-arg index="1" type="boolean" value="true"/>
+   </bean>
+```
 
-#### @TraceMethod   
+#### @TraceMethod 
 
 This annotates a method definition. It wraps a method in a span or logs a method call as an event.
 
@@ -763,19 +777,44 @@ This annotates a class definition. It wraps all public methods in a span or logs
 - Boolean: isEvent
 - Boolean: includeMethodName (logs method signature, default false)
 
-#### @TraceRestControllers
+#### Enable @TraceMethod and @TracedClass Annotations
 
-This annotates a class definition with @RestController annotation. It creates a new span for RestControllers when a request is received. 
+To use the @TraceMethod and @TracedClass annotations to instrument you application include the following aspect in your configuration file:
 
-@TraceRestControllers fields: 
-- Boolean: includeLoggingExporter (default true)
+```xml
+   <!-- Enable Aspects --!>
+   <aop:aspectj-autoproxy/>
+   
+   <!-- traces explicit calls to @TraceMethod and @TracedClass -->
+   <bean id="otAspect" class="io.opentelemetry.instrumentation.spring.OTSpingAspect">
+      <constructor-arg ref="tracer"/>
+   </bean>
+```
 
-#### @InjectTraceRestTemplate
+#### Instrument RestControllers
 
-Inject span context to all requests using RestTemplate.
+This component instruments spring-web RestControllers by creating and registering a Spring HandlerInterceptor. This wraps all controllers in the context in a new span. Sample configuration is shown below: 
 
-@InjectTraceRestTemplate fields: 
-- Boolean: isEvent (default false) 
+```xml
+   
+   <!-- Wraps spring web RestControllers in a span -->
+   <bean id="interceptorConfigRC" class="io.opentelemetry.instrumentation.spring.InterceptorConfigRC"/>
+```
+
+
+#### Instrument RestTemplate
+
+Inject span context to all requests using RestTemplate:
+
+```xml
+   
+   <!-- Wraps spring web RestControllers in a span -->
+   <bean id="restTemplateConfig" class="io.opentelemetry.instrumentation.spring.RestTemplateConfig">
+      <!-- Optional constructor arg, can add interceptor to existing RestTemplate -->
+      <!-- <constructor-arg ref="restTemplate"/> -->
+   </bean>
+   
+``` 
 
 #### @TraceHibernateDatabase
 
@@ -785,24 +824,27 @@ This annotates a hibernate entity. It wraps all database calls using the Hiberna
 - String: name
 - Boolean: isEvent (default false)
 
+
 ### Example Usage
 
-#### @ConfigTracer
+#### Use Tracer
 
 ```java
-ConfigTracer(name = "tracerName", includeLoggingExporter=False)
-@SpringBootApplication
-public class SecondServiceApplication {
+@AutoWired
+Tracer tracer;
 
-   public static void main(String[] args) throws IOException {
-      SpringApplication.run(SecondServiceApplication.class, args);
+public String secondTracedMethod() {
+   Span span = tracer.spanBuilder("start").startSpan();
+   
+   try{
+      return "It's time to get a watch";
+   } finally {
+      span.end();
    }
-
 }
 ```
  
 #### @TraceMethod   
-
 
 ```java
 @TraceMethod(name = "methodName", isEvent = True)
@@ -823,33 +865,6 @@ public class SecondServiceController {
    @GetMapping
    public String callSecondTracedMethod() {
       return "It's time to get a watch";
-   }
-}
-```
-
-#### @TraceRestControllers
-
-
-```java
-@TraceRestControllers(includeLoggingExporter=False)
-@SpringBootApplication
-public class SecondServiceApplication {
-
-   public static void main(String[] args) throws IOException {
-      SpringApplication.run(SecondServiceApplication.class, args);
-   }
-}
-```
-
-#### @InjectTraceRestTemplate
-
-```java
-@InjectTraceRestTemplate(isEvent = True)
-@SpringBootApplication
-public class SecondServiceApplication {
-
-   public static void main(String[] args) throws IOException {
-      SpringApplication.run(SecondServiceApplication.class, args);
    }
 }
 ```
