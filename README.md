@@ -745,24 +745,65 @@ compile "io.opentelemetry:opentelemetry-instrumentation-spring:VERSION"
 runtime 'org.springframework:spring-aspects:SPRING_VERSION'
 ```
 
-### Features (IN PROGRESS)
+### Setup
 
-#### Initialize Tracer
+#### Using XML Configurations
 
-This initialize a global tracer for your application. It will create a Tracer Object which can be injected as a dependency.
+Add the beans below to your xml configuration file. The functionality provided by each bean is discussed in the feature section [below](#features-in-progress).
 
-```xml
-<!-- global tracer -->
+```
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.2.xsd http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd">
+
+   <aop:aspectj-autoproxy/>
+   
+   <!-- global tracer -->
    <bean id="tracer" class="io.opentelemetry.instrumentation.spring.OtelTracer" factory-method="getTracer/>
       <!-- tracer name -->
       <constructor-arg type="java.lang.String" value="otel-tracer-name"/>     <!-- include LoggingExporter() -->
       <constructor-arg index="1" type="boolean" value="true"/>
    </bean>
+   
+   <!-- traces explicit calls to @TraceMethod and @TracedClass -->
+   <bean id="otAspect" class="io.opentelemetry.instrumentation.spring.OTSpingAspect">
+      <constructor-arg ref="tracer"/>
+   </bean>
+   
+   
+    <!-- wraps requests to spring web RestControllers in a span -->
+   <bean id="interceptorConfigRC" class="io.opentelemetry.instrumentation.spring.InterceptorConfigRC">
+      <constructor-arg ref="tracer"/>
+   </bean>
+   
+   <!-- Wraps outgoing requests using Spring's RestTemplate in a span -->
+   <bean id="restTemplateConfig" class="io.opentelemetry.instrumentation.spring.HandlerConfigRestTemplate">
+      <constructor-arg ref="tracer"/>
+      <!-- Optional constructor arg, can add interceptor to existing RestTemplate -->
+      <!-- <constructor-arg ref="restTemplate"/> -->
+   </bean>
+
+</beans>
+
 ```
+
+#### Using Annotations
+
+As an alternative to using xml configuration this package supplies the `@ConfigTracer` annotation. This annotation enables component scanning of the `io.opentelemetry.instrumentation.spring` project and it supplies all the beans listed in the [xml configurations](#using-xml-configurations) above. Usage of this annotation is shown [here](#configtracer).
+
+
+### Features (IN PROGRESS)
+
+
+#### Global Open Telemetry Tracer
+
+The method `io.opentelemetry.instrumentation.spring.OtelTracer.getTracer` generates a global tracer for your application. This bean can be autowired to project components to enable manual instrumentation. By default OpenTelemetry's lightweight LoggingExporter is enabled to log span events to console. This logger can be disabled.
+
 
 #### @TraceMethod 
 
-This annotates a method definition. It wraps a method in a span or logs a method call as an event.
+This annotates a method definition. It wraps a method in a span or logs a method call as an event. To use the @TraceMethod annotation to instrument you application include the OTSpingAspect bean in your configuration file or use the [config tracer](#configtracer) annotation in your application.
 
 @TraceMethod fields: 
 - String: name
@@ -772,49 +813,23 @@ This annotates a method definition. It wraps a method in a span or logs a method
 
 This annotates a class definition. It wraps all public methods in a span or logs all method calls as an event.
 
+To use the @TraceMethod annotation to instrument you application include the OTSpingAspect bean in your configuration file or use the [config tracer](#configtracer) annotation in your application.
+
 @TraceClass fields: 
 - String: name
 - Boolean: isEvent
 - Boolean: includeMethodName (logs method signature, default false)
 
-#### Enable @TraceMethod and @TracedClass Annotations
 
-To use the @TraceMethod and @TracedClass annotations to instrument you application include the following aspect in your configuration file:
-
-```xml
-   <!-- Enable Aspects --!>
-   <aop:aspectj-autoproxy/>
-   
-   <!-- traces explicit calls to @TraceMethod and @TracedClass -->
-   <bean id="otAspect" class="io.opentelemetry.instrumentation.spring.OTSpingAspect">
-      <constructor-arg ref="tracer"/>
-   </bean>
-```
 
 #### Instrument RestControllers
 
-This component instruments spring-web RestControllers by creating and registering a Spring HandlerInterceptor. This wraps all controllers in the context in a new span. Sample configuration is shown below: 
-
-```xml
-   
-   <!-- Wraps spring web RestControllers in a span -->
-   <bean id="interceptorConfigRC" class="io.opentelemetry.instrumentation.spring.InterceptorConfigRC"/>
-```
+This package instruments spring-web RestControllers by creating and registering a Spring HandlerInterceptor. This wraps all controllers in the context in a new span. To enable this functionality include the InterceptorConfigRC bean in your configuration file or use the [config tracer](#configtracer) annotation in your application. 
 
 
 #### Instrument RestTemplate
 
-Inject span context to all requests using RestTemplate:
-
-```xml
-   
-   <!-- Wraps spring web RestControllers in a span -->
-   <bean id="restTemplateConfig" class="io.opentelemetry.instrumentation.spring.RestTemplateConfig">
-      <!-- Optional constructor arg, can add interceptor to existing RestTemplate -->
-      <!-- <constructor-arg ref="restTemplate"/> -->
-   </bean>
-   
-``` 
+Inject span context to all requests using Spring's RestTemplate HTTP client. To enable this functionality include the HandlerConfigRestTemplate bean in your configuration file or use the [config tracer](#configtracer) annotation in your application. 
 
 #### @TraceHibernateDatabase
 
@@ -827,7 +842,28 @@ This annotates a hibernate entity. It wraps all database calls using the Hiberna
 
 ### Example Usage
 
-#### Use Tracer
+
+#### ConfigTracer 
+
+```
+SpringBootProject
+├────src/main/java
+│    └───springbootproject
+│        │ SpringBootProjectApplication.java
+│        └───config
+│              OtelConfig.java      
+```
+
+```java
+import  io.otel.instrumentation.spring.tools.annotations.ConfigTracer
+
+@ConfigTracer
+class OtelConfig {
+
+}
+```
+
+#### Manual Instrumentation with the Global Tracer
 
 ```java
 @AutoWired
